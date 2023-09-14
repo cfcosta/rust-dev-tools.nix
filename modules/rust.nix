@@ -32,7 +32,10 @@ let
 in {
   package = {
     latest = rust "stable" "latest";
+    latestNightly = rustNightly;
+
     stable = version: rust "stable" version;
+    nightly = date: rust "nightly" date;
   };
 
   scripts = [
