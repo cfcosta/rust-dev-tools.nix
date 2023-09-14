@@ -18,23 +18,6 @@
           utils = import ./utils { inherit pkgs; };
         };
     } // flake-utils.lib.eachDefaultSystem (system:
-      let
-        tools = self.outputs.setup "rdt" pkgs;
-
-        pkgs = import nixpkgs {
-          inherit system;
-
-          overlays = tools.overlays.default;
-        };
-      in {
-        devShell = with pkgs;
-          mkShell {
-            packages = [
-              (tools.rust.package.latest)
-              (tools.rust.scripts)
-              (tools.database.fromDockerCompose ./docker-compose.example.yml
-                "db")
-            ];
-          };
-      });
+      let pkgs = import nixpkgs { inherit system; };
+      in { devShell = with pkgs; mkShell { packages = [ nixfmt ]; }; });
 }
