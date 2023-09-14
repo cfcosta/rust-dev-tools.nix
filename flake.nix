@@ -7,27 +7,13 @@
   };
 
   outputs = { self, nixpkgs, flake-utils }:
-    let
-      utils = pkgs: rec {
-        readYAML = yaml:
-          builtins.fromJSON (builtins.readFile (pkgs.runCommand "from-yaml" {
-            inherit yaml;
-            allowSubstitutes = false;
-            preferLocalBuild = true;
-          } ''
-            ${pkgs.remarshal}/bin/remarshal -if yaml -i <(echo "$yaml") -of json -o $out
-          ''));
-
-        fromYAML = path: readYAML (builtins.readFile path);
-      };
-      modules = import modules { inherit utils; };
-    in {
+    {
       setup = packageName: pkgs:
         import ./modules {
           inherit pkgs;
           inherit packageName;
 
-          utils = utils pkgs;
+          utils = import ./utils { inherit pkgs; };
         };
     } // flake-utils.lib.eachDefaultSystem (system:
       let
