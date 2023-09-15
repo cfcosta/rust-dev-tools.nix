@@ -20,8 +20,7 @@
             packages = [
               (tools.rust.package.latest)
               (tools.rust.scripts)
-              (tools.database.fromDockerCompose ./docker-compose.example.yml
-                "db")
+              (tools.database.fromDockerCompose ./docker-compose.yml "db")
             ];
           };
       });

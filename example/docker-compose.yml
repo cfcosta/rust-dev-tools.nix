@@ -9,8 +9,8 @@ services:
     environment:
       POSTGRES_DB: rust-dev-tools
       POSTGRES_USER: rust-dev-tools
-      POSTGRES_PASSWORD: pasword
+      POSTGRES_PASSWORD: pass
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - 5432:5432
+      - 9999:5432
