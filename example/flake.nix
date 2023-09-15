@@ -19,7 +19,10 @@
           mkShell {
             packages = [
               (tools.rust.package.latest)
+
+              (tools.nix.scripts)
               (tools.rust.scripts)
+
               (tools.database.fromDockerCompose ./docker-compose.yml "db")
             ];
           };

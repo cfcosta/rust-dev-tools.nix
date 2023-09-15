@@ -5,4 +5,5 @@
 
   database = import ./database.nix { inherit packageName pkgs utils; };
   rust = import ./rust.nix { inherit packageName pkgs utils; };
+  nix = import ./nix.nix { inherit packageName pkgs; };
 }
