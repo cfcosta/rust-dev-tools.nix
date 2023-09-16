@@ -18,7 +18,7 @@
         devShell = with pkgs;
           mkShell {
             packages = [
-              (tools.rust.package.latest)
+              (tools.rust.package.fromCargo ./Cargo.toml)
 
               (tools.nix.scripts)
               (tools.rust.scripts)

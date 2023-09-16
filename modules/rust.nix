@@ -32,6 +32,12 @@ let
   udeps = "exec ${pkgs.cargo-udeps}/bin/cargo-udeps udeps $@";
 in {
   package = {
+    fromCargo = file:
+      let
+        version =
+          (builtins.fromTOML (builtins.readFile file)).package.rust-version;
+      in rust "stable" version;
+
     latest = rust "stable" "latest";
     latestNightly = rustNightly;
 
