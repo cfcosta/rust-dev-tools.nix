@@ -1,9 +1,14 @@
-{ packageName, pkgs, utils, inputs }: {
+{ pkgs, utils, inputs, options }:
+let
+  tools = {
+    database = import ./database.nix { inherit options pkgs utils; };
+    rust = import ./rust.nix { inherit options pkgs utils; };
+    nix = import ./nix.nix { inherit options pkgs; };
+  };
+in {
   inherit utils;
 
-  overlays.default = [ inputs.rust-overlay.overlays.default ];
-
-  database = import ./database.nix { inherit packageName pkgs utils; };
-  rust = import ./rust.nix { inherit packageName pkgs utils; };
-  nix = import ./nix.nix { inherit packageName pkgs; };
+  devShell = pkgs.mkShell {
+    packages = [ (tools.rust.package.fromCargo options.rust.cargoToml) ];
+  };
 }

@@ -1,6 +1,8 @@
-{ packageName, pkgs }: {
+{ options, pkgs }: {
   scripts = [
-    (pkgs.writeShellScriptBin "${packageName}-nix-update-input"
-      "nix flake lock --update-input $@")
+    (pkgs.writeShellApplication {
+      name = "${options.name}-nix-update-input";
+      text = "nix flake lock --update-input $@";
+    })
   ];
 }

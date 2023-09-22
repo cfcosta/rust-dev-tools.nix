@@ -14,15 +14,21 @@
 
   outputs = inputs@{ self, nixpkgs, flake-utils, rust-overlay }:
     {
-      setup = packageName: pkgs:
-        import ./modules {
-          inherit pkgs;
-          inherit packageName;
+      setup = options:
+        import ./modules rec {
+          inherit options;
           inherit inputs;
+
+          pkgs = import nixpkgs {
+            inherit (options) system;
+            overlays = [ rust-overlay.overlays.default ];
+          };
 
           utils = import ./utils { inherit pkgs; };
         };
     } // flake-utils.lib.eachDefaultSystem (system:
       let pkgs = import nixpkgs { inherit system; };
-      in { devShell = with pkgs; mkShell { packages = [ nixfmt ]; }; });
+      in {
+        devShells.default = with pkgs; mkShell { packages = [ nixfmt ]; };
+      });
 }

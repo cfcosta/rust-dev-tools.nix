@@ -1,4 +1,4 @@
-{ pkgs, utils, packageName }:
+{ pkgs, utils, options }:
 let
   rust = channel: version:
     pkgs.rust-bin.${channel}.${version}.default.override {
@@ -11,9 +11,9 @@ let
   '';
 
   script = name: cmd: [
-    (pkgs.writeShellScriptBin "${packageName}-${name}" cmd)
-    (pkgs.writeShellScriptBin "${packageName}-watch-${name}"
-      (watch "${packageName}-${name}"))
+    (pkgs.writeShellScriptBin "${options.name}-${name}" cmd)
+    (pkgs.writeShellScriptBin "${options.name}-watch-${name}"
+      (watch "${options.name}-${name}"))
   ];
   nightlyScript = name: cmd:
     script name ''
@@ -32,7 +32,7 @@ let
   udeps = "exec ${pkgs.cargo-udeps}/bin/cargo-udeps udeps $@";
 in {
   package = {
-    fromCargo = file:
+    fromCargo = file: overrides:
       let
         version =
           (builtins.fromTOML (builtins.readFile file)).package.rust-version;

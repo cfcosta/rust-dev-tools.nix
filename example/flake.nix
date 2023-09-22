@@ -8,23 +8,12 @@
   outputs = inputs@{ self, nixpkgs, flake-utils, rust-dev-tools }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        tools = rust-dev-tools.setup "example" pkgs;
+        tools = rust-dev-tools.setup {
+          name = "example";
 
-        pkgs = import nixpkgs {
           inherit system;
-          overlays = tools.overlays.default;
+
+          rust.cargoToml = ./Cargo.toml;
         };
-      in {
-        devShell = with pkgs;
-          mkShell {
-            packages = [
-              (tools.rust.package.fromCargo ./Cargo.toml)
-
-              (tools.nix.scripts)
-              (tools.rust.scripts)
-
-              (tools.database.fromDockerCompose ./docker-compose.yml "db")
-            ];
-          };
-      });
+      in { devShells.default = tools.devShell; });
 }

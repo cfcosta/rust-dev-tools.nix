@@ -1,4 +1,4 @@
-{ pkgs, utils, packageName }:
+{ pkgs, utils, options }:
 let
   scripts = creds:
     with pkgs; {
@@ -25,6 +25,6 @@ in {
         database = service.environment.POSTGRES_DB or "postgres";
       };
     in pkgs.lib.mapAttrsToList
-    (name: script: pkgs.writeShellScriptBin "${packageName}-${name}" script)
+    (name: script: pkgs.writeShellScriptBin "${options.name}-${name}" script)
     (scripts creds);
 }
