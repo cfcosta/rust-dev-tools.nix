@@ -12,7 +12,7 @@ in {
 
   devShell = pkgs.mkShell ({
     packages = [
-      (modules.rust.rust.fromCargo options.rust.cargoToml)
+      (modules.rust.fromCargo options.rust.cargoToml)
       (modules.rust.packages)
     ] ++ options.dependencies;
   } // env);

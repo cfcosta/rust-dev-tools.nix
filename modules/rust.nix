@@ -51,19 +51,16 @@ let
 
   depsWithLibs = builtins.filter utils.containsLibraries options.dependencies;
 in {
-  rust = {
-    fromCargo = file:
-      let
-        version =
-          (builtins.fromTOML (builtins.readFile file)).package.rust-version;
-      in rust "stable" version;
+  fromCargo = file:
+    let
+      toml = builtins.fromTOML (builtins.readFile file);
 
-    latest = rust "stable" "latest";
-    latestNightly = rustNightly;
-
-    stable = version: rust "stable" version;
-    nightly = date: rust "nightly" date;
-  };
+      version = if builtins.hasAttr "package" toml
+      && builtins.hasAttr "rust-version" toml.package then
+        toml.package.rust-version
+      else
+        "latest";
+    in rust "stable" version;
 
   env = {
     RUSTFLAGS = concatStringsSep " " (systemFlags.${pkgs.system});
