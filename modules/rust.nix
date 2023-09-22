@@ -32,7 +32,7 @@ let
   udeps = ''exec ${pkgs.cargo-udeps}/bin/cargo-udeps udeps "$@"'';
 
   systemSpecificDependencies = with pkgs; rec {
-    aarch64-darwin = [ darwin.apple_sdk.frameworks.SystemConfiguration ];
+    aarch64-darwin = [ darwin.apple_sdk.frameworks.SystemConfiguration lld_14 ];
     x86_64-darwin = aarch64-darwin;
 
     x86_64-linux = optionals options.rust.useMold [ mold ];
@@ -40,7 +40,7 @@ let
   };
 
   systemFlags = with pkgs; rec {
-    x86_64-darwin = [ ];
+    x86_64-darwin = [ "-C link-arg=-fuse-ld=lld" ];
     aarch64-darwin = x86_64-darwin;
 
     x86_64-linux =
