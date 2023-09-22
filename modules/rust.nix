@@ -11,26 +11,25 @@ let
     ${pkgs.cargo-watch}/bin/cargo-watch watch -s "${cmd}"
   '';
 
-  script = name: cmd: [
-    (pkgs.writeShellScriptBin "${options.name}-${name}" cmd)
+  script = name: cmd: rust: [
+    (pkgs.writeShellApplication {
+      name = "${options.name}-${name}";
+      runtimeInputs = [ rust ];
+      text = cmd;
+    })
+
     (pkgs.writeShellScriptBin "${options.name}-watch-${name}"
       (watch "${options.name}-${name}"))
   ];
-  nightlyScript = name: cmd:
-    script name ''
-      export RUSTC="${rustNightly}/bin/rustc";
-      export CARGO="${rustNightly}/bin/cargo";
 
-      ${cmd}
-    '';
-
-  audit = "exec ${pkgs.cargo-audit}/bin/cargo-audit audit $@";
-  bench = "exec cargo bench $@";
-  check = "exec cargo clippy --tests --benches $@";
-  doc = "exec cargo doc $@";
-  fmt = "exec cargo fmt $@";
+  audit = ''exec ${pkgs.cargo-audit}/bin/cargo-audit audit "$@"'';
+  bench = ''exec cargo bench "$@"'';
+  build = ''exec cargo build "$@"'';
+  check = ''exec cargo clippy --tests --benches "$@"'';
+  doc = ''exec cargo doc "$@"'';
+  fmt = ''exec cargo fmt "$@"'';
   test = "exec ${pkgs.cargo-nextest}/bin/cargo-nextest nextest run";
-  udeps = "exec ${pkgs.cargo-udeps}/bin/cargo-udeps udeps $@";
+  udeps = ''exec ${pkgs.cargo-udeps}/bin/cargo-udeps udeps "$@"'';
 
   systemSpecificDependencies = with pkgs; rec {
     aarch64-darwin = [ darwin.apple_sdk.frameworks.SystemConfiguration ];
@@ -50,17 +49,18 @@ let
   };
 
   depsWithLibs = builtins.filter utils.containsLibraries options.dependencies;
-in {
-  fromCargo = file:
-    let
-      toml = builtins.fromTOML (builtins.readFile file);
 
-      version = if builtins.hasAttr "package" toml
-      && builtins.hasAttr "rust-version" toml.package then
-        toml.package.rust-version
-      else
-        "latest";
-    in rust "stable" version;
+  fromCargo = let
+    toml = builtins.fromTOML (builtins.readFile options.rust.cargoToml);
+
+    version = if builtins.hasAttr "package" toml
+    && builtins.hasAttr "rust-version" toml.package then
+      toml.package.rust-version
+    else
+      "latest";
+  in rust "stable" version;
+in {
+  inherit fromCargo;
 
   env = {
     RUSTFLAGS = concatStringsSep " " (systemFlags.${pkgs.system});
@@ -69,13 +69,17 @@ in {
   };
 
   packages = [
-    (script "audit" audit)
-    (script "bench" bench)
-    (script "check" check)
-    (script "doc" doc)
-    (script "fmt" fmt)
-    (script "test" test)
+    (pkgs.writeShellScriptBin "${options.name}-watch"
+      (watch "${options.name}-check"))
 
-    (nightlyScript "udeps" udeps)
+    (script "audit" audit fromCargo)
+    (script "bench" bench fromCargo)
+    (script "build" build fromCargo)
+    (script "check" check fromCargo)
+    (script "doc" doc fromCargo)
+    (script "fmt" fmt fromCargo)
+    (script "test" test fromCargo)
+
+    (script "udeps" udeps rustNightly)
   ] ++ systemSpecificDependencies."${pkgs.system}";
 }
