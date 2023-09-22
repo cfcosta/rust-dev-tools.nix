@@ -1,4 +1,5 @@
 { pkgs, utils, options }:
+with pkgs.lib;
 let
   rust = channel: version:
     pkgs.rust-bin.${channel}.${version}.default.override {
@@ -30,9 +31,28 @@ let
   fmt = "exec cargo fmt $@";
   test = "exec ${pkgs.cargo-nextest}/bin/cargo-nextest nextest run";
   udeps = "exec ${pkgs.cargo-udeps}/bin/cargo-udeps udeps $@";
+
+  systemSpecificDependencies = with pkgs; rec {
+    aarch64-darwin = [ darwin.apple_sdk.frameworks.SystemConfiguration ];
+    x86_64-darwin = aarch64-darwin;
+
+    x86_64-linux = optionals options.rust.useMold [ mold ];
+    aarch64-linux = x86_64-linux;
+  };
+
+  systemFlags = with pkgs; rec {
+    x86_64-darwin = [ ];
+    aarch64-darwin = x86_64-darwin;
+
+    x86_64-linux =
+      optionals options.rust.useMold [ "-C link-arg=-fuse-ld=mold" ];
+    aarch64-linux = x86_64-linux;
+  };
+
+  depsWithLibs = builtins.filter utils.containsLibraries options.dependencies;
 in {
-  package = {
-    fromCargo = file: overrides:
+  rust = {
+    fromCargo = file:
       let
         version =
           (builtins.fromTOML (builtins.readFile file)).package.rust-version;
@@ -45,7 +65,13 @@ in {
     nightly = date: rust "nightly" date;
   };
 
-  scripts = [
+  env = {
+    RUSTFLAGS = concatStringsSep " " (systemFlags.${pkgs.system});
+    LD_LIBRARY_PATH =
+      makeLibraryPath (depsWithLibs ++ [ pkgs.stdenv.cc.cc.lib ]);
+  };
+
+  packages = [
     (script "audit" audit)
     (script "bench" bench)
     (script "check" check)
@@ -54,5 +80,5 @@ in {
     (script "test" test)
 
     (nightlyScript "udeps" udeps)
-  ];
+  ] ++ systemSpecificDependencies."${pkgs.system}";
 }

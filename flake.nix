@@ -14,17 +14,21 @@
 
   outputs = inputs@{ self, nixpkgs, flake-utils, rust-overlay }:
     {
-      setup = options:
-        import ./modules rec {
-          inherit options;
-          inherit inputs;
+      setup = system: overrides:
+        let
+          defaultOptions = {
+            dependencies = [ ];
+            rust = { useMold = false; };
+            shell.env = { };
+          };
+        in import ./modules rec {
+          utils = import ./utils { inherit pkgs; };
+          options = utils.deepMerge defaultOptions (overrides pkgs);
 
           pkgs = import nixpkgs {
-            inherit (options) system;
+            inherit system;
             overlays = [ rust-overlay.overlays.default ];
           };
-
-          utils = import ./utils { inherit pkgs; };
         };
     } // flake-utils.lib.eachDefaultSystem (system:
       let pkgs = import nixpkgs { inherit system; };

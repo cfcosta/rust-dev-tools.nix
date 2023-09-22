@@ -8,12 +8,15 @@
   outputs = inputs@{ self, nixpkgs, flake-utils, rust-dev-tools }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        tools = rust-dev-tools.setup {
+        tools = rust-dev-tools.setup system (pkgs: {
           name = "example";
 
-          inherit system;
+          rust = {
+            cargoToml = ./Cargo.toml;
+            useMold = true;
+          };
 
-          rust.cargoToml = ./Cargo.toml;
-        };
+          dependencies = with pkgs; [ pkg-config openssl ];
+        });
       in { devShells.default = tools.devShell; });
 }
