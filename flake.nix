@@ -18,7 +18,7 @@
         let
           defaultOptions = {
             dependencies = [ ];
-            rust = { useMold = false; };
+            rust = { };
             shell.env = { };
           };
         in import ./modules rec {

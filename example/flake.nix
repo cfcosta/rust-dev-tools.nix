@@ -10,12 +10,7 @@
       let
         tools = rust-dev-tools.setup system (pkgs: {
           name = "example";
-
-          rust = {
-            cargoToml = ./Cargo.toml;
-            useMold = true;
-          };
-
+          rust.cargoToml = ./Cargo.toml;
           dependencies = with pkgs; [ pkg-config openssl ];
         });
       in { devShells.default = tools.devShell; });

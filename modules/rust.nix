@@ -35,7 +35,7 @@ let
     aarch64-darwin = [ darwin.apple_sdk.frameworks.SystemConfiguration lld_14 ];
     x86_64-darwin = aarch64-darwin;
 
-    x86_64-linux = optionals options.rust.useMold [ mold ];
+    x86_64-linux = [ mold ];
     aarch64-linux = x86_64-linux;
   };
 
@@ -43,8 +43,7 @@ let
     x86_64-darwin = [ "-C link-arg=-fuse-ld=lld" ];
     aarch64-darwin = x86_64-darwin;
 
-    x86_64-linux =
-      optionals options.rust.useMold [ "-C link-arg=-fuse-ld=mold" ];
+    x86_64-linux = [ "-C link-arg=-fuse-ld=mold" ];
     aarch64-linux = x86_64-linux;
   };
 
