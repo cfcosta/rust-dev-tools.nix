@@ -1,8 +1,10 @@
-{ options, pkgs }: {
+{ options, pkgs }:
+let prefix = "${options.name}-nix";
+in {
   scripts = [
     (pkgs.writeShellApplication {
-      name = "${options.name}-nix-update-input";
-      text = "nix flake lock --update-input $@";
+      name = "${prefix}-update-input";
+      text = ''${pkgs.nix}/bin/nix flake lock --update-input "$@"'';
     })
   ];
 }

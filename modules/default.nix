@@ -11,7 +11,8 @@ in {
   inherit utils;
 
   devShell = pkgs.mkShell ({
-    packages = [ (modules.rust.fromCargo) (modules.rust.packages) ]
+    packages =
+      [ (modules.nix.scripts) (modules.rust.fromCargo) (modules.rust.packages) ]
       ++ options.dependencies;
   } // env);
 }
