@@ -1,7 +1,6 @@
 { pkgs, utils, options }:
 let
   modules = {
-    database = import ./database.nix { inherit options pkgs utils; };
     rust = import ./rust.nix { inherit options pkgs utils; };
     nix = import ./nix.nix { inherit options pkgs; };
   };
