@@ -58,11 +58,22 @@ let
     else
       "latest";
   in rust "stable" version;
+
+  flagsFromCargoConfig = if options.cargoConfig == null then
+    [ ]
+  else
+    let toml = (builtins.fromTOML (builtins.readFile options.cargoConfig));
+    in if builtins.hasAttr "build" toml
+    && builtins.hasAttr "rustflags" toml.build then
+      toml.build.rustflags
+    else
+      [ ];
 in {
   inherit fromCargo;
 
   env = {
-    RUSTFLAGS = concatStringsSep " " (systemFlags.${pkgs.system});
+    RUSTFLAGS = concatStringsSep " "
+      ((systemFlags.${pkgs.system}) ++ flagsFromCargoConfig);
     LD_LIBRARY_PATH =
       makeLibraryPath (depsWithLibs ++ [ pkgs.stdenv.cc.cc.lib ]);
   };

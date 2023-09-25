@@ -11,6 +11,7 @@
         tools = rust-dev-tools.setup system (pkgs: {
           name = "example";
           cargoToml = ./Cargo.toml;
+          cargoConfig = ./.cargo/config;
           dependencies = with pkgs; [ pkg-config openssl ];
           shell.onInit = ''
             echo "Hello from devShell!"
