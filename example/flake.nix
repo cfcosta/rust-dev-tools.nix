@@ -2,7 +2,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
-    rust-dev-tools.url = "path:..";
+    rust-dev-tools.url = "github:cfcosta/rust-dev-tools.nix";
   };
 
   outputs = inputs@{ self, nixpkgs, flake-utils, rust-dev-tools }:
