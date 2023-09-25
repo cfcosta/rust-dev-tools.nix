@@ -12,6 +12,9 @@
           name = "example";
           cargoToml = ./Cargo.toml;
           dependencies = with pkgs; [ pkg-config openssl ];
+          shell.onInit = ''
+            echo "Hello from devShell!"
+          '';
         });
       in { devShells.default = tools.devShell; });
 }

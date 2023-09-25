@@ -19,7 +19,10 @@
           defaultOptions = {
             dependencies = [ ];
             cargoToml = null;
-            shell.env = { };
+            shell = {
+              env = { };
+              onInit = null;
+            };
           };
         in import ./modules rec {
           utils = import ./utils { inherit pkgs; };

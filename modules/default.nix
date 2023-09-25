@@ -13,5 +13,6 @@ in {
     packages =
       [ (modules.nix.scripts) (modules.rust.fromCargo) (modules.rust.packages) ]
       ++ options.dependencies;
+    shellHook = options.shell.onInit;
   } // env);
 }
