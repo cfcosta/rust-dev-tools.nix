@@ -50,7 +50,7 @@ let
   depsWithLibs = builtins.filter utils.containsLibraries options.dependencies;
 
   fromCargo = let
-    toml = builtins.fromTOML (builtins.readFile options.rust.cargoToml);
+    toml = builtins.fromTOML (builtins.readFile options.cargoToml);
 
     version = if builtins.hasAttr "package" toml
     && builtins.hasAttr "rust-version" toml.package then

@@ -18,7 +18,7 @@
         let
           defaultOptions = {
             dependencies = [ ];
-            rust = { };
+            cargoToml = null;
             shell.env = { };
           };
         in import ./modules rec {
