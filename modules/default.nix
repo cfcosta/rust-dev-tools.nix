@@ -13,7 +13,6 @@ in {
     packages =
       [ (modules.nix.scripts) (modules.rust.fromCargo) (modules.rust.packages) ]
       ++ options.dependencies;
-    shellHook =
-      if options.shell.onInit == null then "" else options.shell.onInit;
+    shellHook = if options.shellHook == null then "" else options.shellHook;
   } // env);
 }

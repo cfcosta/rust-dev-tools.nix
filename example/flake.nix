@@ -13,7 +13,7 @@
           cargoToml = ./Cargo.toml;
           cargoConfig = ./.cargo/config;
           dependencies = with pkgs; [ pkg-config openssl ];
-          shell.onInit = ''
+          shellHook = ''
             echo "Hello from devShell!"
           '';
         });

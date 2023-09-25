@@ -20,10 +20,8 @@
             dependencies = [ ];
             cargoToml = null;
             cargoConfig = null;
-            shell = {
-              env = { };
-              onInit = null;
-            };
+            shell = { env = { }; };
+            shellHook = null;
           };
         in import ./modules rec {
           utils = import ./utils { inherit pkgs; };
