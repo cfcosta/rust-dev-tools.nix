@@ -2,6 +2,7 @@
 name = "rdt"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 
 [dependencies]
 openssl = "0.10.57"

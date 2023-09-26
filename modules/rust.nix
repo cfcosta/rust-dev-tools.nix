@@ -31,6 +31,7 @@ let
   bin = name: "exec ${pkgs."${name}"}/bin/${name}";
 
   audit = ''${bin "cargo-audit"} audit "$@"'';
+  deny = ''${bin "cargo-deny"} deny "$@"'';
   expand = ''${bin "cargo-expand"} expand "$@"'';
   outdated = ''${bin "cargo-outdated"} outdated "$@"'';
   semver = ''${bin "cargo-semver-checks"} semver-checks "$@"'';
@@ -95,6 +96,7 @@ in {
     (script "fmt" fmt fromCargo)
 
     (script "audit" audit fromCargo)
+    (script "deny" deny fromCargo)
     (script "expand" expand fromCargo)
     (script "outdated" outdated fromCargo)
     (script "semver" semver fromCargo)
