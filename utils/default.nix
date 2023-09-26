@@ -25,10 +25,10 @@ let
   containsLibraries = pkg:
     let
       checkResult = pkgs.runCommand "check-has-libs" { } ''
-        if test -d ${pkg.outPath}/lib; then
-          echo "yes"
+        if [ -d ${pkg.out}/lib ]; then
+          echo -n "yes"
         else
-          echo "no"
+          echo -n "no"
         fi > $out
       '';
     in builtins.readFile checkResult == "yes";
