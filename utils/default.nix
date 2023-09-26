@@ -32,8 +32,13 @@ let
         fi > $out
       '';
     in builtins.readFile checkResult == "yes";
+
+  firstNonNull = with pkgs.lib;
+    list:
+    let filtered = filter (x: x != null) list;
+    in if length filtered == 0 then null else head filtered;
 in {
-  inherit deepMerge containsLibraries;
+  inherit deepMerge containsLibraries firstNonNull;
 
   fromYAML = path: readYAML (builtins.readFile path);
 }

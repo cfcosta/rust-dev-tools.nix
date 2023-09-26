@@ -56,14 +56,28 @@ let
 
   depsWithLibs = builtins.filter utils.containsLibraries options.dependencies;
 
-  fromCargo = let
-    toml = builtins.fromTOML (builtins.readFile options.cargoToml);
-
-    version = if builtins.hasAttr "package" toml
+  versionFromPackage = toml:
+    if builtins.hasAttr "package" toml
     && builtins.hasAttr "rust-version" toml.package then
       toml.package.rust-version
     else
-      "latest";
+      null;
+
+  versionFromWorkspace = toml:
+    if builtins.hasAttr "workspace" toml
+    && builtins.hasAttr "package" toml.workspace
+    && builtins.hasAttr "rust-version" toml.workspace.package then
+      toml.workspace.package.rust-version
+    else
+      null;
+
+  fromCargo = let
+    toml = builtins.fromTOML (builtins.readFile options.cargoToml);
+    version = utils.firstNonNull [
+      (versionFromWorkspace toml)
+      (versionFromPackage toml)
+      "latest"
+    ];
   in rust "stable" version;
 
   flagsFromCargoConfig = if options.cargoConfig == null then
