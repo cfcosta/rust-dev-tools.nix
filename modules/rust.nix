@@ -29,8 +29,10 @@ let
   fmt = ''exec cargo fmt "$@"'';
 
   bin = name: "exec ${pkgs."${name}"}/bin/${name}";
+
   audit = ''${bin "cargo-audit"} audit "$@"'';
   expand = ''${bin "cargo-expand"} expand "$@"'';
+  outdated = ''${bin "cargo-outdated"} outdated "$@"'';
   semver = ''${bin "cargo-semver-checks"} semver-checks "$@"'';
   test = "${bin "cargo-nextest"} nextest run";
   udeps = ''${bin "cargo-udeps"} udeps "$@"'';
@@ -94,6 +96,7 @@ in {
 
     (script "audit" audit fromCargo)
     (script "expand" expand fromCargo)
+    (script "outdated" outdated fromCargo)
     (script "semver" semver fromCargo)
     (script "test" test fromCargo)
 
