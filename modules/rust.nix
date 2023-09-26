@@ -22,14 +22,18 @@ let
       (watch "${options.name}-${name}"))
   ];
 
-  audit = ''exec ${pkgs.cargo-audit}/bin/cargo-audit audit "$@"'';
   bench = ''exec cargo bench "$@"'';
   build = ''exec cargo build "$@"'';
   check = ''exec cargo clippy --tests --benches "$@"'';
   doc = ''exec cargo doc "$@"'';
   fmt = ''exec cargo fmt "$@"'';
-  test = "exec ${pkgs.cargo-nextest}/bin/cargo-nextest nextest run";
-  udeps = ''exec ${pkgs.cargo-udeps}/bin/cargo-udeps udeps "$@"'';
+
+  bin = name: "exec ${pkgs."${name}"}/bin/${name}";
+  audit = ''${bin "cargo-audit"} audit "$@"'';
+  expand = ''${bin "cargo-expand"} expand "$@"'';
+  semver = ''${bin "cargo-semver-checks"} semver-checks "$@"'';
+  test = "${bin "cargo-nextest"} nextest run";
+  udeps = ''${bin "cargo-udeps"} udeps "$@"'';
 
   systemSpecificDependencies = with pkgs; rec {
     aarch64-darwin = [ darwin.apple_sdk.frameworks.SystemConfiguration lld_14 ];
@@ -82,12 +86,15 @@ in {
     (pkgs.writeShellScriptBin "${options.name}-watch"
       (watch "${options.name}-check"))
 
-    (script "audit" audit fromCargo)
     (script "bench" bench fromCargo)
     (script "build" build fromCargo)
     (script "check" check fromCargo)
     (script "doc" doc fromCargo)
     (script "fmt" fmt fromCargo)
+
+    (script "audit" audit fromCargo)
+    (script "expand" expand fromCargo)
+    (script "semver" semver fromCargo)
     (script "test" test fromCargo)
 
     (script "udeps" udeps rustNightly)
