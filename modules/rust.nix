@@ -71,7 +71,12 @@ let
     else
       null;
 
-  fromCargo = let
+  findRust = if options.toolchainFile != null then
+    pkgs.rust-bin.fromRustupToolchainFile options.toolchainFile
+  else
+    fromCargoToml;
+
+  fromCargoToml = let
     toml = builtins.fromTOML (builtins.readFile options.cargoToml);
     version = utils.firstNonNull [
       (versionFromWorkspace toml)
@@ -90,7 +95,7 @@ let
     else
       [ ];
 in {
-  inherit fromCargo;
+  inherit findRust;
 
   env = {
     RUSTFLAGS = concatStringsSep " "
@@ -103,18 +108,18 @@ in {
     (pkgs.writeShellScriptBin "${options.name}-watch"
       (watch "${options.name}-check"))
 
-    (script "bench" bench fromCargo)
-    (script "build" build fromCargo)
-    (script "check" check fromCargo)
-    (script "doc" doc fromCargo)
-    (script "fmt" fmt fromCargo)
+    (script "bench" bench findRust)
+    (script "build" build findRust)
+    (script "check" check findRust)
+    (script "doc" doc findRust)
+    (script "fmt" fmt findRust)
 
-    (script "audit" audit fromCargo)
-    (script "deny" deny fromCargo)
-    (script "expand" expand fromCargo)
-    (script "outdated" outdated fromCargo)
-    (script "semver" semver fromCargo)
-    (script "test" test fromCargo)
+    (script "audit" audit findRust)
+    (script "deny" deny findRust)
+    (script "expand" expand findRust)
+    (script "outdated" outdated findRust)
+    (script "semver" semver findRust)
+    (script "test" test findRust)
 
     (script "udeps" udeps rustNightly)
   ] ++ systemSpecificDependencies."${pkgs.system}";

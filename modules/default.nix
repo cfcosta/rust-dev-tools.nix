@@ -11,7 +11,7 @@ in {
 
   devShell = pkgs.mkShell ({
     packages =
-      [ (modules.nix.scripts) (modules.rust.fromCargo) (modules.rust.packages) ]
+      [ (modules.nix.scripts) (modules.rust.findRust) (modules.rust.packages) ]
       ++ options.dependencies;
     shellHook = if options.shellHook == null then "" else options.shellHook;
   } // env);
