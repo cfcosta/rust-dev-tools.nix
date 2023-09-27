@@ -7,6 +7,34 @@ let
     };
   rustNightly = rust "nightly" "latest";
 
+  versionFromPackage = toml:
+    if builtins.hasAttr "package" toml
+    && builtins.hasAttr "rust-version" toml.package then
+      toml.package.rust-version
+    else
+      null;
+
+  versionFromWorkspace = toml:
+    if builtins.hasAttr "workspace" toml
+    && builtins.hasAttr "package" toml.workspace
+    && builtins.hasAttr "rust-version" toml.workspace.package then
+      toml.workspace.package.rust-version
+    else
+      null;
+
+  findRust = {
+    toolchain = rust options.rust.channel options.rust.version;
+    toolchainFile = pkgs.rust-bin.fromRustupToolchainFile options.rust.file;
+    cargo = let
+      toml = builtins.fromTOML (builtins.readFile options.rust.file);
+      version = utils.firstNonNull [
+        (versionFromWorkspace toml)
+        (versionFromPackage toml)
+        "latest"
+      ];
+    in rust "stable" version;
+  }.${options.rust.source};
+
   watch = cmd: ''
     ${pkgs.cargo-watch}/bin/cargo-watch watch -s "${cmd}"
   '';
@@ -57,36 +85,6 @@ let
     aarch64-linux = x86_64-linux;
   };
 
-  depsWithLibs = builtins.filter utils.containsLibraries options.dependencies;
-
-  versionFromPackage = toml:
-    if builtins.hasAttr "package" toml
-    && builtins.hasAttr "rust-version" toml.package then
-      toml.package.rust-version
-    else
-      null;
-
-  versionFromWorkspace = toml:
-    if builtins.hasAttr "workspace" toml
-    && builtins.hasAttr "package" toml.workspace
-    && builtins.hasAttr "rust-version" toml.workspace.package then
-      toml.workspace.package.rust-version
-    else
-      null;
-
-  findRust = {
-    toolchain = rust options.rust.channel options.rust.version;
-    toolchainFile = pkgs.rust-bin.fromRustupToolchainFile options.rust.file;
-    cargo = let
-      toml = builtins.fromTOML (builtins.readFile options.rust.file);
-      version = utils.firstNonNull [
-        (versionFromWorkspace toml)
-        (versionFromPackage toml)
-        "latest"
-      ];
-    in rust "stable" version;
-  }.${options.rust.source};
-
   flagsFromCargoConfig = if options.cargoConfig == null then
     [ ]
   else
@@ -102,8 +100,9 @@ in {
   env = {
     RUSTFLAGS = concatStringsSep " "
       ((systemFlags.${pkgs.system}) ++ flagsFromCargoConfig);
-    LD_LIBRARY_PATH =
-      makeLibraryPath (depsWithLibs ++ [ pkgs.stdenv.cc.cc.lib ]);
+    LD_LIBRARY_PATH = makeLibraryPath
+      ((builtins.filter utils.containsLibraries options.dependencies)
+        ++ [ pkgs.stdenv.cc.cc.lib ]);
   };
 
   packages = [

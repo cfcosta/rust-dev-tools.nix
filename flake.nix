@@ -43,7 +43,7 @@
             dependencies = [ ];
             env = { };
             rust = version.fromToolchain "stable" "latest";
-            shellHook = null;
+            shellHook = "";
             overrides = {
               linux.useMold = true;
               darwin.useLLD = true;
