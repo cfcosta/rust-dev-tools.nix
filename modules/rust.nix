@@ -39,18 +39,21 @@ let
   udeps = ''${bin "cargo-udeps"} udeps "$@"'';
 
   systemSpecificDependencies = with pkgs; rec {
-    aarch64-darwin = [ darwin.apple_sdk.frameworks.SystemConfiguration lld_14 ];
+    aarch64-darwin = [ darwin.apple_sdk.frameworks.SystemConfiguration ]
+      ++ optionals options.overrides.darwin.useLLD [ lld_14 ];
     x86_64-darwin = aarch64-darwin;
 
-    x86_64-linux = [ mold ];
+    x86_64-linux = [ ] ++ optionals options.overrides.linux.useMold [ mold ];
     aarch64-linux = x86_64-linux;
   };
 
-  systemFlags = with pkgs; rec {
-    x86_64-darwin = [ "-C link-arg=-fuse-ld=lld" ];
+  systemFlags = with pkgs.lib; rec {
+    x86_64-darwin = [ ] ++ optionals options.overrides.darwin.useLLD
+      [ "-C link-arg=-fuse-ld=lld" ];
     aarch64-darwin = x86_64-darwin;
 
-    x86_64-linux = [ "-C link-arg=-fuse-ld=mold" ];
+    x86_64-linux = [ ] ++ optionals options.overrides.linux.useMold
+      [ "-C link-arg=-fuse-ld=mold" ];
     aarch64-linux = x86_64-linux;
   };
 

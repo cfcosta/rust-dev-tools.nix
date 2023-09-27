@@ -39,11 +39,15 @@
       setup = system: overrides:
         let
           defaultOptions = {
-            dependencies = [ ];
-            rust = version.fromToolchain "stable" "latest";
             cargoConfig = null;
+            dependencies = [ ];
             env = { };
+            rust = version.fromToolchain "stable" "latest";
             shellHook = null;
+            overrides = {
+              linux.useMold = true;
+              darwin.useLLD = true;
+            };
           };
         in import ./modules rec {
           utils = import ./utils { inherit pkgs; };
