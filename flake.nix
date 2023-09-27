@@ -13,15 +13,36 @@
   };
 
   outputs = inputs@{ self, nixpkgs, flake-utils, rust-overlay }:
-    {
+    let
+      version = rec {
+        stable = fromToolchain "stable" "latest";
+        nightly = fromToolchain "nightly" "latest";
+
+        fromToolchain = channel: version: {
+          inherit channel version;
+          source = "toolchain";
+        };
+
+        fromToolchainFile = file: {
+          inherit file;
+          source = "toolchainFile";
+        };
+
+        fromCargoToml = file: {
+          inherit file;
+          source = "cargo";
+        };
+      };
+    in {
+      inherit version;
+
       setup = system: overrides:
         let
           defaultOptions = {
             dependencies = [ ];
-            cargoToml = null;
-            toolchainFile = null;
+            rust = version.fromToolchain "stable" "latest";
             cargoConfig = null;
-            shell = { env = { }; };
+            env = { };
             shellHook = null;
           };
         in import ./modules rec {

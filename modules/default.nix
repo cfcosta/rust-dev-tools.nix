@@ -5,7 +5,7 @@ let
     nix = import ./nix.nix { inherit options pkgs; };
   };
 
-  env = utils.deepMerge modules.rust.env options.shell.env;
+  env = utils.deepMerge modules.rust.env options.env;
 in {
   inherit utils;
 

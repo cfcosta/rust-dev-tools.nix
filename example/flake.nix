@@ -10,8 +10,7 @@
       let
         tools = rust-dev-tools.setup system (pkgs: {
           name = "example";
-          cargoToml = ./Cargo.toml;
-          cargoConfig = ./.cargo/config;
+          rust = rust-dev-tools.version.fromToolchainFile ./rust-toolchain.toml;
           dependencies = with pkgs; [ pkg-config openssl ];
           shellHook = ''
             echo "Hello from devShell!"

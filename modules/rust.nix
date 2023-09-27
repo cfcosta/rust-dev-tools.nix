@@ -71,19 +71,18 @@ let
     else
       null;
 
-  findRust = if options.toolchainFile != null then
-    pkgs.rust-bin.fromRustupToolchainFile options.toolchainFile
-  else
-    fromCargoToml;
-
-  fromCargoToml = let
-    toml = builtins.fromTOML (builtins.readFile options.cargoToml);
-    version = utils.firstNonNull [
-      (versionFromWorkspace toml)
-      (versionFromPackage toml)
-      "latest"
-    ];
-  in rust "stable" version;
+  findRust = {
+    toolchain = rust options.rust.channel options.rust.version;
+    toolchainFile = pkgs.rust-bin.fromRustupToolchainFile options.rust.file;
+    cargo = let
+      toml = builtins.fromTOML (builtins.readFile options.rust.file);
+      version = utils.firstNonNull [
+        (versionFromWorkspace toml)
+        (versionFromPackage toml)
+        "latest"
+      ];
+    in rust "stable" version;
+  }.${options.rust.source};
 
   flagsFromCargoConfig = if options.cargoConfig == null then
     [ ]
