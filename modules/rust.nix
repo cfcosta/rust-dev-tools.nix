@@ -106,6 +106,9 @@ in {
   };
 
   packages = [
+    # Necessary for all dependencies that include libs
+    pkgs.pkg-config
+
     (pkgs.writeShellScriptBin "${options.name}-watch"
       (watch "${options.name}-check"))
 
