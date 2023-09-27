@@ -19,6 +19,7 @@
           defaultOptions = {
             dependencies = [ ];
             cargoToml = null;
+            toolchainFile = null;
             cargoConfig = null;
             shell = { env = { }; };
             shellHook = null;
