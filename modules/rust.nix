@@ -67,8 +67,10 @@ let
   udeps = ''${bin "cargo-udeps"} udeps "$@"'';
 
   systemSpecificDependencies = with pkgs; rec {
-    aarch64-darwin = [ darwin.apple_sdk.frameworks.SystemConfiguration ]
-      ++ optionals options.overrides.darwin.useLLD [ lld_14 ];
+    aarch64-darwin = [
+      darwin.apple_sdk.frameworks.CoreFoundation
+      darwin.apple_sdk.frameworks.SystemConfiguration
+    ] ++ optionals options.overrides.darwin.useLLD [ lld_14 ];
     x86_64-darwin = aarch64-darwin;
 
     x86_64-linux = [ ] ++ optionals options.overrides.linux.useMold [ mold ];
