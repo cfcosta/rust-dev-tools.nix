@@ -63,7 +63,7 @@ let
   expand = ''${bin "cargo-expand"} expand "$@"'';
   outdated = ''${bin "cargo-outdated"} outdated "$@"'';
   semver = ''${bin "cargo-semver-checks"} semver-checks "$@"'';
-  test = "${bin "cargo-nextest"} nextest run";
+  test = ''${bin "cargo-nextest"} nextest run "$@"'';
   udeps = ''${bin "cargo-udeps"} udeps "$@"'';
 
   systemSpecificDependencies = with pkgs; rec {
