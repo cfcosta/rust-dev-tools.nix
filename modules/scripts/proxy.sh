@@ -19,7 +19,6 @@ main() {
 
 	local subcommand="$1"
 
-	subcommand="${subcommand/-/}" # Replace any hyphens with nothing
 	execute "${subcommand}" "${@:2}"
 }
 
