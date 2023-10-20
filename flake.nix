@@ -27,11 +27,14 @@
           inherit file;
           source = "toolchainFile";
         };
+        fromRustToolchainFile = fromToolchainFile;
+        fromRustupToolchainFile = fromToolchainFile;
 
         fromCargoToml = file: {
           inherit file;
           source = "cargo";
         };
+        fromCargo = fromCargoToml;
       };
     in {
       inherit version;
