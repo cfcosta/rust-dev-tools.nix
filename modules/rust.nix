@@ -72,6 +72,7 @@ let
   systemSpecificDependencies = with pkgs; rec {
     aarch64-darwin = [
       darwin.apple_sdk.frameworks.CoreFoundation
+      darwin.apple_sdk.frameworks.CoreServices
       darwin.apple_sdk.frameworks.SystemConfiguration
     ] ++ optionals options.overrides.darwin.useLLD [ lld_14 ];
     x86_64-darwin = aarch64-darwin;
