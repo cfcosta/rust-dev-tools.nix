@@ -5,4 +5,4 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
-openssl = "0.10.57"
+openssl = "0.10.60"
