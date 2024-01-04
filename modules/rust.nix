@@ -36,14 +36,19 @@ let
   }.${options.rust.source};
 
   watch = cmd: ''
-    ${pkgs.cargo-watch}/bin/cargo-watch watch -s "${cmd}"
+    exec ${pkgs.cargo-watch}/bin/cargo-watch watch -s "${cmd} $@"
   '';
 
   script = name: cmd: rust: [
     (pkgs.writeShellApplication {
       name = "${options.name}-${name}";
       runtimeInputs = [ rust ];
-      text = cmd;
+      text = ''
+        export CARGO="${rust}/bin/cargo"
+        export RUSTC="${rust}/bin/rustc"
+
+        exec ${cmd} $@
+      '';
       checkPhase = "";
     })
     (pkgs.writeShellApplication {
@@ -53,21 +58,21 @@ let
     })
   ];
 
-  bench = "exec cargo bench $@";
-  build = "exec cargo build $@";
-  check = "exec cargo clippy --tests --benches $@";
-  doc = "exec cargo doc $@";
-  fmt = "exec cargo fmt $@";
+  bench = "cargo bench";
+  build = "cargo build";
+  check = "cargo clippy --tests --benches";
+  doc = "cargo doc";
+  fmt = "cargo fmt";
 
-  bin = name: "exec ${pkgs."${name}"}/bin/${name}";
+  bin = name: "${pkgs."${name}"}/bin/${name}";
 
-  audit = "${bin "cargo-audit"} audit $@";
-  deny = "${bin "cargo-deny"} deny $@";
-  expand = "${bin "cargo-expand"} expand $@";
-  outdated = "${bin "cargo-outdated"} outdated $@";
-  semver = "${bin "cargo-semver-checks"} semver-checks $@";
-  test = "${bin "cargo-nextest"} nextest run $@";
-  udeps = "${bin "cargo-udeps"} udeps $@";
+  audit = "${bin "cargo-audit"} audit";
+  deny = "${bin "cargo-deny"} deny";
+  expand = "${bin "cargo-expand"} expand";
+  outdated = "${bin "cargo-outdated"} outdated";
+  semver = "${bin "cargo-semver-checks"} semver-checks";
+  test = "${bin "cargo-nextest"} nextest run";
+  udeps = "${bin "cargo-udeps"} udeps";
 
   systemSpecificDependencies = with pkgs; rec {
     aarch64-darwin = [
