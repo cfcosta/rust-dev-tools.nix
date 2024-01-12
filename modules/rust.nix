@@ -1,23 +1,23 @@
 { pkgs, utils, options }:
 with pkgs.lib;
+with builtins;
 let
   rust = channel: version:
     pkgs.rust-bin.${channel}.${version}.default.override {
-      extensions = [ "rust-src" "clippy" "rustfmt" "rust-analyzer" ];
+      extensions =
+        [ "rust-src" "clippy" "rustfmt" "rust-analyzer" "llvm-tools-preview" ];
     };
   rustNightly = rust "nightly" "latest";
 
   versionFromPackage = toml:
-    if builtins.hasAttr "package" toml
-    && builtins.hasAttr "rust-version" toml.package then
+    if hasAttr "package" toml && hasAttr "rust-version" toml.package then
       toml.package.rust-version
     else
       null;
 
   versionFromWorkspace = toml:
-    if builtins.hasAttr "workspace" toml
-    && builtins.hasAttr "package" toml.workspace
-    && builtins.hasAttr "rust-version" toml.workspace.package then
+    if hasAttr "workspace" toml && hasAttr "package" toml.workspace
+    && hasAttr "rust-version" toml.workspace.package then
       toml.workspace.package.rust-version
     else
       null;
@@ -26,7 +26,7 @@ let
     toolchain = rust options.rust.channel options.rust.version;
     toolchainFile = pkgs.rust-bin.fromRustupToolchainFile options.rust.file;
     cargo = let
-      toml = builtins.fromTOML (builtins.readFile options.rust.file);
+      toml = fromTOML (readFile options.rust.file);
       version = utils.firstNonNull [
         (versionFromWorkspace toml)
         (versionFromPackage toml)
@@ -73,6 +73,8 @@ let
   semver = "${bin "cargo-semver-checks"} semver-checks";
   test = "${bin "cargo-nextest"} nextest run";
   udeps = "${bin "cargo-udeps"} udeps";
+  mutants = "${bin "cargo-mutants"} mutants";
+  llvm-cov = "${bin "cargo-llvm-cov"} llvm-cov";
 
   systemSpecificDependencies = with pkgs; rec {
     aarch64-darwin = [
@@ -82,7 +84,8 @@ let
     ] ++ optionals options.overrides.darwin.useLLD [ lld_14 ];
     x86_64-darwin = aarch64-darwin;
 
-    x86_64-linux = [ ] ++ optionals options.overrides.linux.useMold [ mold ];
+    x86_64-linux = [ (script "llvm-cov" llvm-cov rustNightly) ]
+      ++ optionals options.overrides.linux.useMold [ mold ];
     aarch64-linux = x86_64-linux;
   };
 
@@ -99,9 +102,8 @@ let
   flagsFromCargoConfig = if options.cargoConfig == null then
     [ ]
   else
-    let toml = (builtins.fromTOML (builtins.readFile options.cargoConfig));
-    in if builtins.hasAttr "build" toml
-    && builtins.hasAttr "rustflags" toml.build then
+    let toml = (fromTOML (readFile options.cargoConfig));
+    in if hasAttr "build" toml && hasAttr "rustflags" toml.build then
       toml.build.rustflags
     else
       [ ];
@@ -112,7 +114,7 @@ in {
     RUSTFLAGS = concatStringsSep " "
       ((systemFlags.${pkgs.system}) ++ flagsFromCargoConfig);
     LD_LIBRARY_PATH = makeLibraryPath
-      ((builtins.filter utils.containsLibraries options.dependencies)
+      ((filter utils.containsLibraries options.dependencies)
         ++ [ pkgs.stdenv.cc.cc.lib ]);
   };
 
@@ -133,6 +135,7 @@ in {
     (script "audit" audit findRust)
     (script "deny" deny findRust)
     (script "expand" expand findRust)
+    (script "mutants" mutants findRust)
     (script "outdated" outdated findRust)
     (script "semver" semver findRust)
     (script "test" test findRust)
