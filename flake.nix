@@ -12,7 +12,7 @@
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, flake-utils, rust-overlay }:
+  outputs = { nixpkgs, flake-utils, rust-overlay, ... }:
     let
       version = rec {
         stable = fromToolchain "stable" "latest";
@@ -39,7 +39,13 @@
     in {
       inherit version;
 
-      setup = system: overrides:
+      overlays.default = _: prev: {
+        nixpkgs = prev.nixpkgs // {
+          overlays = prev.nixpkgs.overlays ++ [ rust-overlay.overlays.default ];
+        };
+      };
+
+      setup = pkgs: overrides:
         let
           defaultOptions = {
             cargoConfig = null;
@@ -55,11 +61,6 @@
         in import ./modules rec {
           utils = import ./utils { inherit pkgs; };
           options = utils.deepMerge defaultOptions (overrides pkgs);
-
-          pkgs = import nixpkgs {
-            inherit system;
-            overlays = [ rust-overlay.overlays.default ];
-          };
         };
     } // flake-utils.lib.eachDefaultSystem (system:
       let pkgs = import nixpkgs { inherit system; };
