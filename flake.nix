@@ -52,6 +52,7 @@
             dependencies = [ ];
             env = { };
             rust = version.fromToolchain "stable" "latest";
+            enableNightlyTools = false;
             shellHook = "";
             overrides = {
               linux.useMold = true;

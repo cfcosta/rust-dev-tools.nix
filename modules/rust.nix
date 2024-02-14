@@ -7,7 +7,11 @@ let
       extensions =
         [ "rust-src" "clippy" "rustfmt" "rust-analyzer" "llvm-tools-preview" ];
     };
-  rustNightly = rust "nightly" "latest";
+  nightlyScript = name: cmd:
+    if options.enableNightlyTools then
+      script name cmd (rust "nightly" "latest")
+    else
+      null;
 
   versionFromPackage = toml:
     if hasAttr "package" toml && hasAttr "rust-version" toml.package then
@@ -84,7 +88,7 @@ let
     ] ++ optionals options.overrides.darwin.useLLD [ lld_14 ];
     x86_64-darwin = aarch64-darwin;
 
-    x86_64-linux = [ (script "llvm-cov" llvm-cov rustNightly) ]
+    x86_64-linux = [ (nightlyScript "llvm-cov" llvm-cov) ]
       ++ optionals options.overrides.linux.useMold [ mold ];
     aarch64-linux = x86_64-linux;
   };
@@ -140,6 +144,6 @@ in {
     (script "semver" semver findRust)
     (script "test" test findRust)
 
-    (script "udeps" udeps rustNightly)
+    (nightlyScript "udeps" udeps)
   ] ++ systemSpecificDependencies."${pkgs.system}";
 }
