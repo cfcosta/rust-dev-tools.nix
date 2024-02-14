@@ -7,6 +7,7 @@ let
       extensions =
         [ "rust-src" "clippy" "rustfmt" "rust-analyzer" "llvm-tools-preview" ];
     };
+  rustNightly = rust "nightly" "latest";
 
   versionFromPackage = toml:
     if hasAttr "package" toml && hasAttr "rust-version" toml.package then
@@ -69,7 +70,9 @@ let
   deny = "${bin "cargo-deny"} deny";
   expand = "${bin "cargo-expand"} expand";
   outdated = "${bin "cargo-outdated"} outdated";
+  semver = "${bin "cargo-semver-checks"} semver-checks";
   test = "${bin "cargo-nextest"} nextest run";
+  udeps = "${bin "cargo-udeps"} udeps";
   mutants = "${bin "cargo-mutants"} mutants";
   llvm-cov = "${bin "cargo-llvm-cov"} llvm-cov";
 
@@ -134,6 +137,9 @@ in {
     (script "expand" expand findRust)
     (script "mutants" mutants findRust)
     (script "outdated" outdated findRust)
+    (script "semver" semver findRust)
     (script "test" test findRust)
+
+    (script "udeps" udeps rustNightly)
   ] ++ systemSpecificDependencies."${pkgs.system}";
 }
