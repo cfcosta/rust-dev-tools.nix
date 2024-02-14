@@ -36,8 +36,6 @@ in {
   inherit utils;
 
   devShell = pkgs.mkShell ({
-    inherit (options) shellHook;
-
     packages = [ mainScript modules.rust.findRust modules.rust.packages ]
       ++ options.dependencies;
   } // env);

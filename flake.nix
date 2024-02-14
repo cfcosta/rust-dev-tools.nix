@@ -39,11 +39,7 @@
     in {
       inherit version;
 
-      overlays.default = _: prev: {
-        nixpkgs = prev.nixpkgs // {
-          overlays = prev.nixpkgs.overlays ++ [ rust-overlay.overlays.default ];
-        };
-      };
+      overlays.default = rust-overlay.overlays.default;
 
       setup = pkgs: overrides:
         let
@@ -53,15 +49,16 @@
             env = { };
             rust = version.fromToolchain "stable" "latest";
             enableNightlyTools = false;
-            shellHook = "";
             overrides = {
               linux.useMold = true;
               darwin.useLLD = true;
             };
           };
         in import ./modules rec {
+          inherit pkgs;
+
           utils = import ./utils { inherit pkgs; };
-          options = utils.deepMerge defaultOptions (overrides pkgs);
+          options = utils.deepMerge defaultOptions overrides;
         };
     } // flake-utils.lib.eachDefaultSystem (system:
       let pkgs = import nixpkgs { inherit system; };
