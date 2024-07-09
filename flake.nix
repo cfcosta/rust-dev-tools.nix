@@ -12,13 +12,7 @@
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      flake-utils,
-      rust-overlay,
-      ...
-    }:
+    { self, nixpkgs, flake-utils, rust-overlay, ... }:
     let
       version = rec {
         stable = fromToolchain "stable" "latest";
@@ -65,11 +59,15 @@
               utils = import ./utils { inherit pkgs; };
               options = utils.deepMerge defaultOptions overrides;
             };
+
+            devShell = pkgs.mkShell {
+              inputsFrom = [ modules.devShell ];
+              buildInputs = [];
+            };
           in
           {
-            devShell = modules.devShell;
+            inherit devShell;
             createRustPlatform = modules.createRustPlatform;
-            findRust = modules.rust.findRust;
           };
       };
     in
@@ -120,7 +118,23 @@
             pkgs.mkShell {
               inputsFrom = [ rdt.devShell ];
               shellHook = ''
-                echo "Test setup shell initialized"
+                if ! command -v rustc &> /dev/null; then
+                  echo "Error: rustc not found in PATH"
+                  exit 1
+                fi
+
+                if ! command -v cargo &> /dev/null; then
+                  echo "Error: cargo not found in PATH"
+                  exit 1
+                fi
+
+                # Test Rust version
+                rustc --version
+
+                # Test Cargo version
+                cargo --version
+
+                echo "Rust and Cargo are available in the development shell"
               '';
             };
 
