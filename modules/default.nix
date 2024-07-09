@@ -39,4 +39,6 @@ in {
     packages = [ mainScript modules.rust.findRust modules.rust.packages ]
       ++ options.dependencies;
   } // env);
+
+  createRustPlatform = modules.rust.createRustPlatform;
 }

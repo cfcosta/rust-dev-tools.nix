@@ -1,25 +1,29 @@
 #!/usr/bin/env bash
 
 execute() {
-	local cmd="$(basename "${0}")-${1}"
+	local cmd="$(basename "${0}")-${1%"${1##*[![:space:]]}"}"
 
 	if command -v "${cmd}" &>/dev/null; then
-		"${cmd}" "${@:2}"
+		if [ $# -eq 1 ]; then
+			"${cmd}"
+		else
+			"${cmd}" "${@:2}"
+		fi
 	else
-		echo "Error: Command '$cmd' does not exist."
+		echo "Error: Command '$cmd' does not exist." >&2
 		exit 1
 	fi
 }
 
 main() {
-	if [ "${#}" -lt 1 ]; then
-		echo "Usage: $(basename "${0}") <sub-command>"
+	if [ $# -eq 0 ]; then
+		echo "Usage: $(basename "${0}") <sub-command> [arguments...]" >&2
 		exit 1
 	fi
 
 	local subcommand="$1"
 
-	execute "${subcommand}" "${@:2}"
+	execute "$@"
 }
 
 main "$@"

@@ -1,12 +1,40 @@
 { pkgs, utils, options }:
-with pkgs.lib;
-with builtins;
 let
+  inherit (builtins) readFile hasAttr;
+  inherit (pkgs.lib) concatStringsSep optionals makeLibraryPath filter;
+
   rust = channel: version:
     pkgs.rust-bin.${channel}.${version}.default.override {
       extensions =
         [ "rust-src" "clippy" "rustfmt" "rust-analyzer" "llvm-tools-preview" ];
     };
+
+  findRust = versionSpec:
+    if versionSpec == null then
+      {
+        toolchain = rust options.rust.channel options.rust.version;
+        toolchainFile = pkgs.rust-bin.fromRustupToolchainFile options.rust.file;
+        cargo = let
+          toml = fromTOML (readFile options.rust.file);
+          version = utils.firstNonNull [
+            (versionFromWorkspace toml)
+            (versionFromPackage toml)
+            "latest"
+          ];
+        in rust "stable" version;
+      }.${options.rust.source}
+    else
+      rust versionSpec.channel versionSpec.version;
+
+  createRustPlatform = versionSpec:
+    let
+      rustc = findRust versionSpec;
+    in
+    pkgs.makeRustPlatform {
+      cargo = rustc;
+      rustc = rustc;
+    };
+
   nightlyScript = name: cmd:
     if options.enableNightlyTools then
       script name cmd (rust "nightly" "latest")
@@ -26,21 +54,8 @@ let
     else
       null;
 
-  findRust = {
-    toolchain = rust options.rust.channel options.rust.version;
-    toolchainFile = pkgs.rust-bin.fromRustupToolchainFile options.rust.file;
-    cargo = let
-      toml = fromTOML (readFile options.rust.file);
-      version = utils.firstNonNull [
-        (versionFromWorkspace toml)
-        (versionFromPackage toml)
-        "latest"
-      ];
-    in rust "stable" version;
-  }.${options.rust.source};
-
   watch = cmd: ''
-    exec ${pkgs.cargo-watch}/bin/cargo-watch watch -s "${cmd} $@"
+    exec ${pkgs.cargo-watch}/bin/cargo-watch watch -s "${cmd} ''${@}"
   '';
 
   script = name: cmd: rust: [
@@ -51,7 +66,7 @@ let
         export CARGO="${rust}/bin/cargo"
         export RUSTC="${rust}/bin/rustc"
 
-        exec ${cmd} $@
+        exec ${cmd} "''${@}"
       '';
       checkPhase = "";
     })
@@ -81,24 +96,30 @@ let
   llvm-cov = "${bin "cargo-llvm-cov"} llvm-cov";
 
   systemSpecificDependencies = with pkgs; rec {
+    inherit (darwin.apple_sdk.frameworks) CoreFoundation CoreServices SystemConfiguration;
+    inherit (options.overrides) darwin linux;
+    inherit lld_14 mold;
+
     aarch64-darwin = [
-      darwin.apple_sdk.frameworks.CoreFoundation
-      darwin.apple_sdk.frameworks.CoreServices
-      darwin.apple_sdk.frameworks.SystemConfiguration
-    ] ++ optionals options.overrides.darwin.useLLD [ lld_14 ];
+      CoreFoundation
+      CoreServices
+      SystemConfiguration
+    ] ++ optionals darwin.useLLD [ lld_14 ];
     x86_64-darwin = aarch64-darwin;
 
     x86_64-linux = [ (nightlyScript "llvm-cov" llvm-cov) ]
-      ++ optionals options.overrides.linux.useMold [ mold ];
+      ++ optionals linux.useMold [ mold ];
     aarch64-linux = x86_64-linux;
   };
 
-  systemFlags = with pkgs.lib; rec {
-    x86_64-darwin = [ ] ++ optionals options.overrides.darwin.useLLD
+  systemFlags = rec {
+    inherit (options.overrides) darwin linux;
+
+    x86_64-darwin = [ ] ++ optionals darwin.useLLD
       [ "-C link-arg=-fuse-ld=lld" ];
     aarch64-darwin = x86_64-darwin;
 
-    x86_64-linux = [ ] ++ optionals options.overrides.linux.useMold
+    x86_64-linux = [ ] ++ optionals linux.useMold
       [ "-C link-arg=-fuse-ld=mold" ];
     aarch64-linux = x86_64-linux;
   };
@@ -112,7 +133,7 @@ let
     else
       [ ];
 in {
-  inherit findRust;
+  inherit findRust createRustPlatform;
 
   env = {
     RUSTFLAGS = concatStringsSep " "

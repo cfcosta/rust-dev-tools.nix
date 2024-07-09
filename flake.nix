@@ -53,15 +53,20 @@
               darwin.useLLD = true;
             };
           };
-        in import ./modules rec {
-          inherit pkgs;
-
-          utils = import ./utils { inherit pkgs; };
-          options = utils.deepMerge defaultOptions overrides;
+          modules = import ./modules rec {
+            inherit pkgs;
+            utils = import ./utils { inherit pkgs; };
+            options = utils.deepMerge defaultOptions overrides;
+          };
+        in {
+          devShell = modules.devShell;
+          createRustPlatform = modules.createRustPlatform;
+          findRust = modules.rust.findRust;
         };
+
     } // flake-utils.lib.eachDefaultSystem (system:
       let pkgs = import nixpkgs { inherit system; };
       in {
-        devShells.default = with pkgs; mkShell { packages = [ nixfmt ]; };
+        devShells.default = with pkgs; mkShell { packages = [ nixfmt-rfc-style ]; };
       });
 }

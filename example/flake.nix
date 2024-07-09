@@ -17,7 +17,10 @@
           name = "example";
           dependencies = with pkgs; [ openssl ];
         };
+
+        rustPlatform = rdt.createRustPlatform rdt.findRust;
       in {
         devShells.default = pkgs.mkShell { inputsFrom = [ rdt.devShell ]; };
+        inherit rustPlatform;
       });
 }
