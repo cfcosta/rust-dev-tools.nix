@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: DeterminateSystems/nix-installer-action@main
+    - uses: DeterminateSystems/magic-nix-cache-action@main
+    - name: Format Nix files
+      run: |
+        nix develop --command bash -c "nixfmt **/*.nix"
+        
+        if git diff --exit-code; then
+          echo "No files were changed by nixfmt"
+          exit 0
+        else
+          echo "Files were changed by nixfmt, indicating formatting issues"
+          git diff
+          exit 1
+        fi
+    - name: Run Nix flake check
+      run: |
+        nix flake check
