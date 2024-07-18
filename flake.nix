@@ -101,7 +101,7 @@
               runCase =
                 args:
                 let
-                  rdt = self.lib.setup pkgs (
+                  rdt = self.setup pkgs (
                     args
                     // {
                       name = "rdt-example";
@@ -127,18 +127,19 @@
             in
             {
               testBuildRustPackage = runCase { };
-              testStable = runCase { version = self.lib.version.stable; };
-              testNightly = runCase { version = self.lib.version.nightly; };
-              testFromToolchain = runCase { version = self.lib.version.fromToolchain "nightly" "latest"; };
+              testStable = runCase { version = self.version.stable; };
+              testNightly = runCase { version = self.version.nightly; };
+              testFromToolchain = runCase { version = self.version.fromToolchain "nightly" "latest"; };
               testFromToolchainFile = runCase {
-                version = self.lib.version.fromToolchainFile ./example/rust-toolchain.toml;
+                version = self.version.fromToolchainFile ./example/rust-toolchain.toml;
               };
             }
             // builtins.mapAttrs (_: value: value) modules.tests;
         };
     in
     {
-      inherit lib;
+      inherit (lib) version setup;
+
       overlays.default = rust-overlay.overlays.default;
     }
     // flake-utils.lib.eachDefaultSystem developmentEnv;

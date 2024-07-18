@@ -89,8 +89,8 @@ let
     }@args:
     let
       rustPlatform = createRustPlatform rustVersion;
-      defaultBuildInputs = options.dependencies ++ systemSpecificDependencies.${pkgs.system};
-      defaultNativeBuildInputs = [ pkgs.pkg-config ];
+      defaultBuildInputs = options.dependencies;
+      defaultNativeBuildInputs = [ pkgs.pkg-config ] ++ systemSpecificDependencies.${pkgs.system};
     in
     rustPlatform.buildRustPackage (
       args
