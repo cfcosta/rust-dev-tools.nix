@@ -203,7 +203,7 @@ let
         SystemConfiguration
         Security
       ])
-      ++ optionals darwin.useLLD [ pkgs.lld_15 ];
+      ++ optionals darwin.useLLD [ pkgs.lld ];
     "x86_64-darwin" = systemSpecificDependencies."aarch64-darwin";
 
     "x86_64-linux" = optionals linux.useMold [ pkgs.mold ];

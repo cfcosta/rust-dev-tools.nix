@@ -51,7 +51,7 @@
         enableNightlyTools = false;
         overrides = {
           linux.useMold = true;
-          darwin.useLLD = false;
+          darwin.useLLD = true;
         };
       };
 
@@ -98,6 +98,9 @@
 
           checks =
             let
+              inherit (pkgs.lib) optionalAttrs;
+              inherit (pkgs.stdenv) isDarwin;
+
               runCase =
                 args:
                 let
@@ -133,6 +136,9 @@
               testFromToolchainFile = runCase {
                 version = self.version.fromToolchainFile ./example/rust-toolchain.toml;
               };
+              testDarwinLLD = optionalAttrs isDarwin (runCase {
+                overrides.darwin.useLLD = true;
+              });
             }
             // builtins.mapAttrs (_: value: value) modules.tests;
         };
