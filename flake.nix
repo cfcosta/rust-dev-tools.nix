@@ -4,7 +4,6 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
-
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -43,23 +42,25 @@
         fromCargo = fromCargoToml;
       };
 
+      defaultOptions = {
+        name = "dev";
+        cargoConfig = null;
+        dependencies = [ ];
+        env = { };
+        rust = version.fromToolchain "stable" "latest";
+        enableNightlyTools = false;
+        overrides = {
+          linux.useMold = true;
+          darwin.useLLD = false;
+        };
+      };
+
       lib = {
         inherit version;
 
         setup =
           pkgs: overrides:
           let
-            defaultOptions = {
-              cargoConfig = null;
-              dependencies = [ ];
-              env = { };
-              rust = version.fromToolchain "stable" "latest";
-              enableNightlyTools = false;
-              overrides = {
-                linux.useMold = true;
-                darwin.useLLD = false;
-              };
-            };
             modules = import ./modules rec {
               inherit pkgs;
               utils = import ./utils { inherit pkgs; };
@@ -77,67 +78,68 @@
             buildRustPackage = modules.buildRustPackage;
           };
       };
+
+      developmentEnv =
+        system:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ rust-overlay.overlays.default ];
+          };
+
+          modules = import ./modules {
+            inherit pkgs;
+            utils = import ./utils { inherit pkgs; };
+            options = defaultOptions;
+          };
+        in
+        {
+          devShells.default = pkgs.mkShell { packages = with pkgs; [ nixfmt-rfc-style ]; };
+
+          checks =
+            let
+              runCase =
+                args:
+                let
+                  rdt = self.lib.setup pkgs (
+                    args
+                    // {
+                      name = "rdt-example";
+                      dependencies = with pkgs; [ openssl ];
+                    }
+                  );
+
+                  package = rdt.buildRustPackage {
+                    src = ./example;
+                    cargoLock.lockFile = ./example/Cargo.lock;
+                  };
+                in
+                pkgs.runCommand "test-build-rust-package" { } ''
+                  if [ ! -e ${package}/bin/rdt-example ]; then
+                    echo "Error: Built package does not contain the expected binary"
+                    exit 1
+                  fi
+
+                  ${package}/bin/rdt-example
+
+                  touch $out
+                '';
+            in
+            {
+              testBuildRustPackage = runCase { };
+              testStable = runCase { version = self.lib.version.stable; };
+              testNightly = runCase { version = self.lib.version.nightly; };
+              testFromToolchain = runCase { version = self.lib.version.fromToolchain "nightly" "latest"; };
+              testFromToolchainFile = runCase {
+                version = self.lib.version.fromToolchainFile ./example/rust-toolchain.toml;
+              };
+            }
+            // builtins.mapAttrs (_: value: value) modules.tests;
+        };
     in
     {
       inherit lib;
-
       overlays.default = rust-overlay.overlays.default;
     }
-    // flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ rust-overlay.overlays.default ];
-        };
-
-        inherit (pkgs) mkShell;
-
-        modules = import ./modules {
-          inherit pkgs;
-          utils = import ./utils { inherit pkgs; };
-          options = {
-            name = "dev";
-            cargoConfig = null;
-            dependencies = [ ];
-            env = { };
-            rust = version.fromToolchain "stable" "latest";
-            enableNightlyTools = false;
-            overrides = {
-              linux.useMold = true;
-              darwin.useLLD = false;
-            };
-          };
-        };
-      in
-      {
-        devShells.default = mkShell { packages = with pkgs; [ nixfmt-rfc-style ]; };
-
-        checks = {
-          testBuildRustPackage =
-            let
-              rdt = self.lib.setup pkgs {
-                name = "rdt-example";
-                dependencies = with pkgs; [ openssl ];
-              };
-
-              builtPackage = rdt.buildRustPackage {
-                version = "0.1.0";
-                src = ./example;
-                cargoLock.lockFile = ./example/Cargo.lock;
-              };
-            in
-            pkgs.runCommand "test-build-rust-package" { } ''
-              if [ ! -e ${builtPackage}/bin/rdt-example ]; then
-                echo "Error: Built package does not contain the expected binary"
-                exit 1
-              fi
-
-              ${builtPackage}/bin/rdt-example
-
-              touch $out
-            '';
-        } // builtins.mapAttrs (_: value: value) modules.tests;
-      }
-    );
+    // flake-utils.lib.eachDefaultSystem developmentEnv;
 }
