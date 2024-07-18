@@ -162,12 +162,12 @@ let
 
   systemSpecificDependencies = {
     "aarch64-darwin" =
-      with pkgs.darwin.apple_sdk.frameworks;
-      [
+      (with pkgs.darwin.apple_sdk.frameworks; [
         CoreFoundation
         CoreServices
         SystemConfiguration
-      ]
+        Security
+      ])
       ++ optionals darwin.useLLD [ pkgs.lld ];
     "x86_64-darwin" = systemSpecificDependencies."aarch64-darwin";
 
