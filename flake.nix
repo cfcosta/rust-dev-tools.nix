@@ -12,7 +12,13 @@
   };
 
   outputs =
-    { self, nixpkgs, flake-utils, rust-overlay, ... }:
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      rust-overlay,
+      ...
+    }:
     let
       version = rec {
         stable = fromToolchain "stable" "latest";
@@ -51,7 +57,7 @@
               enableNightlyTools = false;
               overrides = {
                 linux.useMold = true;
-                darwin.useLLD = true;
+                darwin.useLLD = false;
               };
             };
             modules = import ./modules rec {
@@ -62,12 +68,13 @@
 
             devShell = pkgs.mkShell {
               inputsFrom = [ modules.devShell ];
-              buildInputs = [];
+              buildInputs = [ ];
             };
           in
           {
             inherit devShell;
             createRustPlatform = modules.createRustPlatform;
+            buildRustPackage = modules.buildRustPackage;
           };
       };
     in
@@ -98,7 +105,7 @@
             enableNightlyTools = false;
             overrides = {
               linux.useMold = true;
-              darwin.useLLD = true;
+              darwin.useLLD = false;
             };
           };
         };
@@ -106,49 +113,31 @@
       {
         devShells.default = mkShell { packages = with pkgs; [ nixfmt-rfc-style ]; };
 
-        # Add tests to ensure the setup and devShell work correctly
         checks = {
-          testSetup =
+          testBuildRustPackage =
             let
               rdt = self.lib.setup pkgs {
-                name = "test-project";
+                name = "rdt-example";
                 dependencies = with pkgs; [ openssl ];
               };
+
+              builtPackage = rdt.buildRustPackage {
+                version = "0.1.0";
+                src = ./example;
+                cargoLock.lockFile = ./example/Cargo.lock;
+              };
             in
-            pkgs.mkShell {
-              inputsFrom = [ rdt.devShell ];
-              shellHook = ''
-                if ! command -v rustc &> /dev/null; then
-                  echo "Error: rustc not found in PATH"
-                  exit 1
-                fi
+            pkgs.runCommand "test-build-rust-package" { } ''
+              if [ ! -e ${builtPackage}/bin/rdt-example ]; then
+                echo "Error: Built package does not contain the expected binary"
+                exit 1
+              fi
 
-                if ! command -v cargo &> /dev/null; then
-                  echo "Error: cargo not found in PATH"
-                  exit 1
-                fi
+              ${builtPackage}/bin/rdt-example
 
-                # Test Rust version
-                rustc --version
-
-                # Test Cargo version
-                cargo --version
-
-                echo "Rust and Cargo are available in the development shell"
-              '';
-            };
-
-          testRustPlatform =
-            let
-              rustPlatform = (self.lib.setup pkgs { }).createRustPlatform { };
-            in
-            rustPlatform.buildRustPackage {
-              pname = "test-package";
-              version = "0.1.0";
-              src = ./example;
-              cargoLock.lockFile = ./example/Cargo.lock;
-            };
-        } // builtins.mapAttrs (name: value: value) modules.tests;
+              touch $out
+            '';
+        } // builtins.mapAttrs (_: value: value) modules.tests;
       }
     );
 }

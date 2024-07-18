@@ -4,27 +4,45 @@
   options,
 }:
 let
+  inherit (pkgs.stdenv) mkDerivation;
+  inherit (pkgs) runCommand;
+  inherit (builtins)
+    attrValues
+    concatStringsSep
+    isAttrs
+    isFunction
+    mapAttrs
+    typeOf
+    ;
+
   modules.rust = import ./rust.nix { inherit options pkgs utils; };
   env = utils.deepMerge modules.rust.env options.env;
 
   proxyCompletion = ''
     _${options.name}_complete() {
-        local cur prev opts
-        COMPREPLY=()
-        cur="$\{COMP_WORDS[COMP_CWORD]\}"
-        prev="$\{COMP_WORDS[COMP_CWORD-1]\}"
-        opts="$(compgen -c | grep ^${options.name}- | sed 's/${options.name}-//')"
+      local cur prev opts cmds
 
-        if [[ $cur == * ]]; then
-            COMPREPLY=( $(compgen -W "$opts" -- $cur) )
-            return 0
-        fi
+      COMPREPLY=()
+      cur="$\{COMP_WORDS[COMP_CWORD]\}"
+      prev="$\{COMP_WORDS[COMP_CWORD-1]\}"
+      cmds="$(compgen -c | grep ^${options.name}- | sed 's/${options.name}-//')"
+
+      if [ $COMP_CWORD -eq 1 ]; then
+        COMPREPLY=( $(compgen -W "$cmds" -- $cur) )
+      elif [ $COMP_CWORD -gt 1 ]; then
+        cmd="$\{COMP_WORDS[1]\}"
+        opts="$(${options.name}-$cmd --help 2>&1 | grep -oE '^\s*-[a-zA-Z0-9-]+' | tr '\n' ' ')"
+        COMPREPLY=( $(compgen -W "$opts" -- $cur) )
+fi
+
+return 0
+
     }
 
     complete -F _${options.name}_complete ${options.name}
   '';
 
-  mainScript = pkgs.stdenv.mkDerivation {
+  mainScript = mkDerivation {
     name = "${options.name}-1.0.0";
     version = "1.0.0";
 
@@ -37,22 +55,24 @@ let
     '';
   };
 
+  rustEnv = modules.rust.findRust options.rust;
+
   packagesToUse =
     [ mainScript ]
-    ++ (if builtins.isFunction modules.rust.findRust then [ ] else [ modules.rust.findRust ])
+    ++ [ rustEnv.rustPackage ]
     ++ (
       if modules.rust.packages ? paths then modules.rust.packages.paths else [ modules.rust.packages ]
     )
     ++ options.dependencies;
 
   # Test functions
-  testEnv = pkgs.runCommand "test-env" { } ''
-    ${builtins.concatStringsSep "\n" (
-      builtins.attrValues (builtins.mapAttrs (name: value: "echo '${name}=${value}' >> $out") env)
+  testEnv = runCommand "test-env" { } ''
+    ${concatStringsSep "\n" (
+      attrValues (mapAttrs (name: value: "echo '${name}=${value}' >> $out") env)
     )}
   '';
 
-  testMainScript = pkgs.runCommand "test-main-script" { } ''
+  testMainScript = runCommand "test-main-script" { } ''
     if [ -f ${mainScript}/bin/${options.name} ]; then
       echo "Main script exists" > $out
     else
@@ -61,26 +81,25 @@ let
     fi
   '';
 
-  testPackagesToUse = pkgs.runCommand "test-packages-to-use" { } ''
+  testPackagesToUse = runCommand "test-packages-to-use" { } ''
     echo "${toString (builtins.length packagesToUse)} packages in packagesToUse" > $out
-    ${builtins.concatStringsSep "\n" (
+    ${concatStringsSep "\n" (
       map (
         p:
-        if builtins.isAttrs p && p ? outPath then
+        if isAttrs p && p ? outPath then
           "echo '${p.name} exists' >> $out"
         else
-          "echo 'Non-derivation package: ${builtins.typeOf p}' >> $out"
+"echo 'Non-derivation package: ${typeOf p}' >> $out"
+
       ) packagesToUse
     )}
   '';
 in
 {
   inherit utils;
+  inherit (modules.rust) createRustPlatform buildRustPackage;
 
-  devShell = pkgs.mkShell ({ packages = packagesToUse; } // env);
-
-  createRustPlatform = modules.rust.createRustPlatform;
-
+  devShell = pkgs.mkShell (env // { buildInputs = packagesToUse; });
   # Tests
   tests = {
     inherit testEnv testMainScript testPackagesToUse;

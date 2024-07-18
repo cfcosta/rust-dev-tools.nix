@@ -4,7 +4,13 @@
   options,
 }:
 let
-  inherit (builtins) readFile hasAttr fromTOML;
+  inherit (builtins)
+    readFile
+    hasAttr
+    fromTOML
+    isAttrs
+    isString
+    ;
   inherit (pkgs.lib)
     concatStringsSep
     optionals
@@ -37,9 +43,9 @@ let
     let
       defaultRust = rust "stable" "latest";
       rustFromSpec =
-        if builtins.isAttrs versionSpec && versionSpec ? channel && versionSpec ? version then
+        if isAttrs versionSpec && versionSpec ? channel && versionSpec ? version then
           rust versionSpec.channel versionSpec.version
-        else if builtins.isString versionSpec then
+        else if isString versionSpec then
           rust "stable" versionSpec
         else
           defaultRust;
@@ -66,13 +72,42 @@ let
   createRustPlatform =
     input:
     let
-      rustPackage =
-        if builtins.isAttrs input && input ? outPath then input else (findRust input).rustPackage;
+      rustPackage = if isAttrs input && input ? outPath then input else (findRust input).rustPackage;
     in
     pkgs.makeRustPlatform {
       cargo = rustPackage;
       rustc = rustPackage;
     };
+
+  buildRustPackage =
+    {
+      name ? options.name,
+      buildInputs ? [ ],
+      nativeBuildInputs ? [ ],
+      rustVersion ? options.rust.version,
+      ...
+    }@args:
+    let
+      rustPlatform = createRustPlatform rustVersion;
+      defaultBuildInputs = options.dependencies ++ systemSpecificDependencies.${pkgs.system};
+      defaultNativeBuildInputs = [ pkgs.pkg-config ];
+    in
+    rustPlatform.buildRustPackage (
+      args
+      // {
+        inherit name;
+
+        buildInputs = defaultBuildInputs ++ buildInputs;
+        nativeBuildInputs = defaultNativeBuildInputs ++ nativeBuildInputs;
+
+        env = {
+          RUSTFLAGS = concatStringsSep " " ((systemFlags.${pkgs.system}) ++ flagsFromCargoConfig);
+          LD_LIBRARY_PATH = makeLibraryPath (
+            (filter utils.containsLibraries options.dependencies) ++ [ pkgs.stdenv.cc.cc.lib ]
+          );
+        };
+      }
+    );
 
   nightlyScript =
     name: cmd: if options.enableNightlyTools then script name cmd (rust "nightly" "latest") else null;
@@ -103,9 +138,9 @@ let
     name: cmd: rust:
     let
       rustPackage =
-        if builtins.isAttrs rust && rust ? rustPackage then
+        if isAttrs rust && rust ? rustPackage then
           rust.rustPackage
-        else if builtins.isAttrs rust && rust ? outPath then
+        else if isAttrs rust && rust ? outPath then
           rust
         else
           (findRust rust).rustPackage;
@@ -168,7 +203,7 @@ let
         SystemConfiguration
         Security
       ])
-      ++ optionals darwin.useLLD [ pkgs.lld ];
+      ++ optionals darwin.useLLD [ pkgs.lld_15 ];
     "x86_64-darwin" = systemSpecificDependencies."aarch64-darwin";
 
     "x86_64-linux" = optionals linux.useMold [ pkgs.mold ];
@@ -197,7 +232,7 @@ let
   createPackages = mapAttrs (name: cmd: script name cmd findRust);
 in
 {
-  inherit findRust createRustPlatform;
+  inherit findRust createRustPlatform buildRustPackage;
 
   env = {
     RUSTFLAGS = concatStringsSep " " ((systemFlags.${pkgs.system}) ++ flagsFromCargoConfig);
