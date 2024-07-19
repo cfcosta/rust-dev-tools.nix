@@ -48,7 +48,6 @@
         dependencies = [ ];
         env = { };
         rust = version.fromToolchain "stable" "latest";
-        enableNightlyTools = false;
         overrides = {
           linux.useMold = true;
           darwin.useLLD = true;
@@ -61,16 +60,17 @@
         setup =
           pkgs: overrides:
           let
-            modules = import ./modules rec {
-              inherit pkgs;
-              utils = import ./utils { inherit pkgs; };
+            utils = import ./utils { inherit pkgs; };
+
+            modules = import ./. {
+              inherit pkgs utils;
               options = utils.deepMerge defaultOptions overrides;
             };
 
             inherit (modules) shellInputs;
 
             devShell = pkgs.mkShell {
-              inputsFrom = [ modules.devShell ];
+              inputsFrom = [ shellInputs ];
               buildInputs = [ ];
             };
           in
