@@ -67,13 +67,15 @@
               options = utils.deepMerge defaultOptions overrides;
             };
 
+            inherit (modules) shellInputs;
+
             devShell = pkgs.mkShell {
               inputsFrom = [ modules.devShell ];
               buildInputs = [ ];
             };
           in
           {
-            inherit devShell;
+            inherit devShell shellInputs;
             inherit (modules) rust;
 
             createRustPlatform = modules.createRustPlatform;

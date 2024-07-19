@@ -38,6 +38,13 @@ let
       inherit rustPackage;
     };
 
+  env = {
+    RUSTFLAGS = concatStringsSep " " ((systemFlags.${pkgs.system}) ++ flagsFromCargoConfig);
+    LD_LIBRARY_PATH = makeLibraryPath (
+      (filter utils.containsLibraries options.dependencies) ++ [ pkgs.stdenv.cc.cc.lib ]
+    );
+  };
+
   findRust =
     versionSpec:
     let
@@ -151,7 +158,7 @@ let
         text = ''
           export CARGO="${rustPackage}/bin/cargo"
           export RUSTC="${rustPackage}/bin/rustc"
-          export RUSTFLAGS="$RUSTFLAGS ''${RUSTFLAGS:-}"
+          export RUSTFLAGS="${env.RUSTFLAGS}"
 
           exec ${cmd} "''${@}"
         '';
@@ -235,14 +242,12 @@ let
   createPackages = mapAttrs (name: cmd: script name cmd findRust);
 in
 {
-  inherit findRust createRustPlatform buildRustPackage;
-
-  env = {
-    RUSTFLAGS = concatStringsSep " " ((systemFlags.${pkgs.system}) ++ flagsFromCargoConfig);
-    LD_LIBRARY_PATH = makeLibraryPath (
-      (filter utils.containsLibraries options.dependencies) ++ [ pkgs.stdenv.cc.cc.lib ]
-    );
-  };
+  inherit
+    findRust
+    createRustPlatform
+    buildRustPackage
+    env
+    ;
 
   packages = pkgs.symlinkJoin {
     name = "${options.name}-packages";

@@ -48,7 +48,7 @@ let
 
   rustEnv = modules.rust.findRust options.rust;
 
-  packagesToUse =
+  shellInputs =
     [ mainScript ]
     ++ [ rustEnv.rustPackage ]
     ++ (
@@ -58,8 +58,9 @@ let
 in
 {
   inherit utils;
+  inherit shellInputs;
   inherit (modules.rust) createRustPlatform buildRustPackage;
 
   rust = rustEnv.rustPackage;
-  devShell = pkgs.mkShell (utils.deepMerge env { buildInputs = packagesToUse; });
+  devShell = pkgs.mkShell (utils.deepMerge env { buildInputs = shellInputs; });
 }
