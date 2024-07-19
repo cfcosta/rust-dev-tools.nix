@@ -18,15 +18,7 @@ let
   inherit (pkgs.stdenv) mkDerivation;
 
   # Rust setup
-  rust = pkgs.rust-bin.${options.rust.channel}.${options.rust.version}.default.override {
-    extensions = [
-      "rust-src"
-      "clippy"
-      "rustfmt"
-      "rust-analyzer"
-      "llvm-tools-preview"
-    ];
-  };
+  rust = pkgs.rust-bin.${options.rust.channel}.${options.rust.version}.complete;
 
   createRustPlatform = pkgs.makeRustPlatform {
     cargo = rust;
@@ -136,11 +128,11 @@ let
 
   # Cargo commands and extensions
   cargoCommands = {
-    bench = "cargo bench";
-    build = "cargo build";
-    check = "cargo clippy --tests --benches";
-    doc = "cargo doc";
-    fmt = "cargo fmt";
+    bench = "${rust}/bin/cargo bench";
+    build = "${rust}/bin/cargo build";
+    check = "${rust}/bin/cargo clippy --tests --benches";
+    doc = "${rust}/bin/cargo doc";
+    fmt = "${rust}/bin/cargo fmt";
   };
 
   bin = name: "${pkgs."${name}"}/bin/${name}";
