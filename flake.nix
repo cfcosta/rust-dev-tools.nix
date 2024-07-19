@@ -96,8 +96,6 @@
 
           checks =
             let
-              inherit (pkgs.lib) optionalAttrs;
-              inherit (pkgs.stdenv) isDarwin;
               inherit (pkgs) runCommand;
 
               runCase =
@@ -135,9 +133,6 @@
               testFromToolchainFile = runCase {
                 version = self.version.fromToolchainFile ./example/rust-toolchain.toml;
               };
-              testDarwinLLD = optionalAttrs isDarwin (runCase {
-                overrides.darwin.useLLD = true;
-              });
               testRustPackage =
                 let
                   rdt = self.setup pkgs {
