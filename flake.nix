@@ -74,6 +74,8 @@
           in
           {
             inherit devShell;
+            inherit (modules) rust;
+
             createRustPlatform = modules.createRustPlatform;
             buildRustPackage = modules.buildRustPackage;
           };
@@ -94,6 +96,7 @@
             let
               inherit (pkgs.lib) optionalAttrs;
               inherit (pkgs.stdenv) isDarwin;
+              inherit (pkgs) runCommand;
 
               runCase =
                 args:
@@ -111,7 +114,7 @@
                     cargoLock.lockFile = ./example/Cargo.lock;
                   };
                 in
-                pkgs.runCommand "test-build-rust-package" { } ''
+                runCommand "test-build-rust-package" { } ''
                   if [ ! -e ${package}/bin/rdt-example ]; then
                     echo "Error: Built package does not contain the expected binary"
                     exit 1
@@ -133,6 +136,23 @@
               testDarwinLLD = optionalAttrs isDarwin (runCase {
                 overrides.darwin.useLLD = true;
               });
+              testRustPackage =
+                let
+                  rdt = self.setup pkgs {
+                    name = "rdt-example";
+                    dependencies = with pkgs; [ openssl ];
+                  };
+                in
+                runCommand "test-rust-package" { } ''
+                  if [ ! -e ${rdt.rust}/bin/rustc ]; then
+                    echo "Error: Rust package does not contain the expected rustc binary"
+                    exit 1
+                  fi
+
+                  ${rdt.rust}/bin/rustc --version
+
+                  touch $out
+                '';
             };
         };
     in
