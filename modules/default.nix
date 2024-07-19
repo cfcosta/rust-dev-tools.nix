@@ -46,11 +46,9 @@ let
     '';
   };
 
-  rustEnv = modules.rust.findRust options.rust;
-
   shellInputs =
     [ mainScript ]
-    ++ [ rustEnv.rustPackage ]
+    ++ [ modules.rust.rust ]
     ++ (
       if modules.rust.packages ? paths then modules.rust.packages.paths else [ modules.rust.packages ]
     )
@@ -61,6 +59,6 @@ in
   inherit shellInputs;
   inherit (modules.rust) createRustPlatform buildRustPackage;
 
-  rust = rustEnv.rustPackage;
+  rust = modules.rust.rust;
   devShell = pkgs.mkShell (utils.deepMerge env { buildInputs = shellInputs; });
 }

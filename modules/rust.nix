@@ -4,13 +4,7 @@
   options,
 }:
 let
-  inherit (builtins)
-    readFile
-    hasAttr
-    fromTOML
-    isAttrs
-    isString
-    ;
+  inherit (builtins) readFile hasAttr fromTOML;
   inherit (pkgs.lib)
     concatStringsSep
     optionals
@@ -21,22 +15,15 @@ let
     ;
   inherit (options.overrides) darwin linux;
 
-  rust =
-    channel: version:
-    let
-      rustPackage = pkgs.rust-bin.${channel}.${version}.default.override {
-        extensions = [
-          "rust-src"
-          "clippy"
-          "rustfmt"
-          "rust-analyzer"
-          "llvm-tools-preview"
-        ];
-      };
-    in
-    {
-      inherit rustPackage;
-    };
+  rust = pkgs.rust-bin.${options.rust.channel}.${options.rust.version}.default.override {
+    extensions = [
+      "rust-src"
+      "clippy"
+      "rustfmt"
+      "rust-analyzer"
+      "llvm-tools-preview"
+    ];
+  };
 
   env = {
     RUSTFLAGS = concatStringsSep " " ((systemFlags.${pkgs.system}) ++ flagsFromCargoConfig);
@@ -45,57 +32,20 @@ let
     );
   };
 
-  findRust =
-    versionSpec:
-    let
-      defaultRust = rust "stable" "latest";
-      rustFromSpec =
-        if isAttrs versionSpec && versionSpec ? channel && versionSpec ? version then
-          rust versionSpec.channel versionSpec.version
-        else if isString versionSpec then
-          rust "stable" versionSpec
-        else
-          defaultRust;
-    in
-    if versionSpec == null then
-      {
-        toolchain = rust options.rust.channel options.rust.version;
-        toolchainFile = pkgs.rust-bin.fromRustupToolchainFile options.rust.file;
-        cargo =
-          let
-            toml = fromTOML (readFile options.rust.file);
-            version = utils.firstNonNull [
-              (versionFromWorkspace toml)
-              (versionFromPackage toml)
-              "latest"
-            ];
-          in
-          rust "stable" version;
-      }
-      .${options.rust.source}
-    else
-      rustFromSpec;
-
-  createRustPlatform =
-    input:
-    let
-      rustPackage = if isAttrs input && input ? outPath then input else (findRust input).rustPackage;
-    in
-    pkgs.makeRustPlatform {
-      cargo = rustPackage;
-      rustc = rustPackage;
-    };
+  createRustPlatform = pkgs.makeRustPlatform {
+    cargo = rust;
+    rustc = rust;
+  };
 
   buildRustPackage =
     {
       name ? options.name,
       buildInputs ? [ ],
       nativeBuildInputs ? [ ],
-      rustVersion ? options.rust.version,
       ...
     }@args:
     let
-      rustPlatform = createRustPlatform rustVersion;
+      rustPlatform = createRustPlatform;
       defaultBuildInputs = options.dependencies;
       defaultNativeBuildInputs = [ pkgs.pkg-config ] ++ systemSpecificDependencies.${pkgs.system};
     in
@@ -116,48 +66,19 @@ let
       }
     );
 
-  nightlyScript =
-    name: cmd: if options.enableNightlyTools then script name cmd (rust "nightly" "latest") else null;
-
-  versionFromPackage =
-    toml:
-    if hasAttr "package" toml && hasAttr "rust-version" toml.package then
-      toml.package.rust-version
-    else
-      null;
-
-  versionFromWorkspace =
-    toml:
-    if
-      hasAttr "workspace" toml
-      && hasAttr "package" toml.workspace
-      && hasAttr "rust-version" toml.workspace.package
-    then
-      toml.workspace.package.rust-version
-    else
-      null;
-
   watch = cmd: ''
     exec ${pkgs.cargo-watch}/bin/cargo-watch watch -s "${cmd} ''${@}"
   '';
 
   script =
-    name: cmd: rust:
+    name: cmd:
     let
-      rustPackage =
-        if isAttrs rust && rust ? rustPackage then
-          rust.rustPackage
-        else if isAttrs rust && rust ? outPath then
-          rust
-        else
-          (findRust rust).rustPackage;
-
       baseScript = pkgs.writeShellApplication {
         name = "${options.name}-${name}";
-        runtimeInputs = [ rustPackage ];
+        runtimeInputs = [ rust ];
         text = ''
-          export CARGO="${rustPackage}/bin/cargo"
-          export RUSTC="${rustPackage}/bin/rustc"
+          export CARGO="${rust}/bin/cargo"
+          export RUSTC="${rust}/bin/rustc"
           export RUSTFLAGS="${env.RUSTFLAGS}"
 
           exec ${cmd} "''${@}"
@@ -198,7 +119,6 @@ let
     outdated = "${bin "cargo-outdated"} outdated";
     semver = "${bin "cargo-semver-checks"} semver-checks";
     test = "${bin "cargo-nextest"} nextest run";
-    udeps = "${bin "cargo-udeps"} udeps";
     mutants = "${bin "cargo-mutants"} mutants";
   };
 
@@ -239,14 +159,14 @@ let
       in
       if hasAttr "build" toml && hasAttr "rustflags" toml.build then toml.build.rustflags else [ ];
 
-  createPackages = mapAttrs (name: cmd: script name cmd findRust);
+  createPackages = mapAttrs (name: cmd: script name cmd);
 in
 {
   inherit
-    findRust
     createRustPlatform
     buildRustPackage
     env
+    rust
     ;
 
   packages = pkgs.symlinkJoin {
@@ -260,7 +180,6 @@ in
       ]
       ++ (attrValues (createPackages cargoCommands))
       ++ (attrValues (createPackages cargoExtensions))
-      ++ [ (nightlyScript "udeps" cargoExtensions.udeps) ]
       ++ systemSpecificDependencies.${pkgs.system};
   };
 }
