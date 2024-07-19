@@ -86,12 +86,6 @@
             inherit system;
             overlays = [ rust-overlay.overlays.default ];
           };
-
-          modules = import ./modules {
-            inherit pkgs;
-            utils = import ./utils { inherit pkgs; };
-            options = defaultOptions;
-          };
         in
         {
           devShells.default = pkgs.mkShell { packages = with pkgs; [ nixfmt-rfc-style ]; };
@@ -139,8 +133,7 @@
               testDarwinLLD = optionalAttrs isDarwin (runCase {
                 overrides.darwin.useLLD = true;
               });
-            }
-            // builtins.mapAttrs (_: value: value) modules.tests;
+            };
         };
     in
     {

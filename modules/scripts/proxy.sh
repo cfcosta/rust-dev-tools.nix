@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 execute() {
-	local cmd="$(basename "${0}")-${1%"${1##*[![:space:]]}"}"
+	local cmd
+	cmd="$(basename "${0}")-${1%"${1##*[![:space:]]}"}"
 
 	if command -v "${cmd}" &>/dev/null; then
 		if [ $# -eq 1 ]; then
@@ -20,8 +21,6 @@ main() {
 		echo "Usage: $(basename "${0}") <sub-command> [arguments...]" >&2
 		exit 1
 	fi
-
-	local subcommand="$1"
 
 	execute "$@"
 }

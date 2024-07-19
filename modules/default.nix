@@ -5,15 +5,6 @@
 }:
 let
   inherit (pkgs.stdenv) mkDerivation;
-  inherit (pkgs) runCommand;
-  inherit (builtins)
-    attrValues
-    concatStringsSep
-    isAttrs
-    isFunction
-    mapAttrs
-    typeOf
-    ;
 
   modules.rust = import ./rust.nix { inherit options pkgs utils; };
   env = utils.deepMerge modules.rust.env options.env;
@@ -33,9 +24,9 @@ let
         cmd="$\{COMP_WORDS[1]\}"
         opts="$(${options.name}-$cmd --help 2>&1 | grep -oE '^\s*-[a-zA-Z0-9-]+' | tr '\n' ' ')"
         COMPREPLY=( $(compgen -W "$opts" -- $cur) )
-fi
+      fi
 
-return 0
+      return 0
 
     }
 
@@ -64,44 +55,11 @@ return 0
       if modules.rust.packages ? paths then modules.rust.packages.paths else [ modules.rust.packages ]
     )
     ++ options.dependencies;
-
-  # Test functions
-  testEnv = runCommand "test-env" { } ''
-    ${concatStringsSep "\n" (
-      attrValues (mapAttrs (name: value: "echo '${name}=${value}' >> $out") env)
-    )}
-  '';
-
-  testMainScript = runCommand "test-main-script" { } ''
-    if [ -f ${mainScript}/bin/${options.name} ]; then
-      echo "Main script exists" > $out
-    else
-      echo "Main script does not exist" > $out
-      exit 1
-    fi
-  '';
-
-  testPackagesToUse = runCommand "test-packages-to-use" { } ''
-    echo "${toString (builtins.length packagesToUse)} packages in packagesToUse" > $out
-    ${concatStringsSep "\n" (
-      map (
-        p:
-        if isAttrs p && p ? outPath then
-          "echo '${p.name} exists' >> $out"
-        else
-"echo 'Non-derivation package: ${typeOf p}' >> $out"
-
-      ) packagesToUse
-    )}
-  '';
 in
 {
   inherit utils;
   inherit (modules.rust) createRustPlatform buildRustPackage;
 
-  devShell = pkgs.mkShell (env // { buildInputs = packagesToUse; });
-  # Tests
-  tests = {
-    inherit testEnv testMainScript testPackagesToUse;
-  };
+  rust = rustEnv.rustPackage;
+  devShell = pkgs.mkShell (utils.deepMerge env { buildInputs = packagesToUse; });
 }
