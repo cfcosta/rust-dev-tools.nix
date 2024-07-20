@@ -56,31 +56,36 @@
 
       lib = {
         inherit version;
+      };
 
-        setup =
-          pkgs: overrides:
-          let
-            utils = import ./utils { inherit pkgs; };
+      overlay = final: prev: {
+        rust-dev-tools = {
+          setup =
+            overrides:
+            let
+              utils = import ./utils { pkgs = final; };
 
-            modules = import ./. {
-              inherit pkgs utils;
-              options = utils.deepMerge defaultOptions overrides;
+              modules = import ./. {
+                pkgs = final;
+                inherit utils;
+                options = utils.deepMerge defaultOptions overrides;
+              };
+
+              inherit (modules) shellInputs;
+
+              devShell = final.mkShell {
+                inputsFrom = [ shellInputs ];
+                buildInputs = [ ];
+              };
+            in
+            {
+              inherit devShell shellInputs;
+              inherit (modules) rust;
+
+              createRustPlatform = modules.createRustPlatform;
+              buildRustPackage = modules.buildRustPackage;
             };
-
-            inherit (modules) shellInputs;
-
-            devShell = pkgs.mkShell {
-              inputsFrom = [ shellInputs ];
-              buildInputs = [ ];
-            };
-          in
-          {
-            inherit devShell shellInputs;
-            inherit (modules) rust;
-
-            createRustPlatform = modules.createRustPlatform;
-            buildRustPackage = modules.buildRustPackage;
-          };
+        };
       };
 
       developmentEnv =
@@ -88,7 +93,10 @@
         let
           pkgs = import nixpkgs {
             inherit system;
-            overlays = [ rust-overlay.overlays.default ];
+            overlays = [
+              rust-overlay.overlays.default
+              overlay
+            ];
           };
         in
         {
@@ -101,7 +109,7 @@
               runCase =
                 args:
                 let
-                  rdt = self.setup pkgs (
+                  rdt = pkgs.rust-dev-tools.setup (
                     args
                     // {
                       name = "rdt-example";
@@ -127,15 +135,15 @@
             in
             {
               testBuildRustPackage = runCase { };
-              testStable = runCase { version = self.version.stable; };
-              testNightly = runCase { version = self.version.nightly; };
-              testFromToolchain = runCase { version = self.version.fromToolchain "nightly" "latest"; };
+              testStable = runCase { version = version.stable; };
+              testNightly = runCase { version = version.nightly; };
+              testFromToolchain = runCase { version = version.fromToolchain "nightly" "latest"; };
               testFromToolchainFile = runCase {
-                version = self.version.fromToolchainFile ./example/rust-toolchain.toml;
+                version = version.fromToolchainFile ./example/rust-toolchain.toml;
               };
               testRustPackage =
                 let
-                  rdt = self.setup pkgs {
+                  rdt = pkgs.rust-dev-tools.setup {
                     name = "rdt-example";
                     dependencies = with pkgs; [ openssl ];
                   };
@@ -152,7 +160,7 @@
                 '';
               testBuildCommand =
                 let
-                  rdt = self.setup pkgs {
+                  rdt = pkgs.rust-dev-tools.setup {
                     name = "rdt-example";
                     dependencies = with pkgs; [ openssl ];
                   };
@@ -178,9 +186,9 @@
         };
     in
     {
-      inherit (lib) version setup;
+      inherit (lib) version;
 
-      overlays.default = rust-overlay.overlays.default;
+      overlays.default = nixpkgs.lib.composeExtensions rust-overlay.overlays.default overlay;
     }
     // flake-utils.lib.eachDefaultSystem developmentEnv;
 }
