@@ -22,7 +22,7 @@
       overlay =
         final: prev:
         let
-          lib = final.lib;
+          inherit (final.lib) mkDefault makeExtensible;
 
           version = rec {
             stable = fromToolchain "stable" "latest";
@@ -37,14 +37,11 @@
               inherit file;
               source = "toolchainFile";
             };
-            fromRustToolchainFile = fromToolchainFile;
-            fromRustupToolchainFile = fromToolchainFile;
 
             fromCargoToml = file: {
               inherit file;
               source = "cargo";
             };
-            fromCargo = fromCargoToml;
           };
 
           defaultOptions = {
@@ -52,7 +49,7 @@
             cargoConfig = null;
             dependencies = [ ];
             env = { };
-            rust = version.fromToolchain "stable" "latest";
+            rust = mkDefault (version.fromToolchain "stable" "latest");
             overrides = {
               linux.useMold = true;
               darwin.useLLD = true;
@@ -67,7 +64,7 @@
             }:
             import ./. { inherit pkgs utils options; };
 
-          rust-dev-tools = lib.makeExtensible (self: {
+          rust-dev-tools = makeExtensible (self: {
             inherit version defaultOptions;
 
             setup =

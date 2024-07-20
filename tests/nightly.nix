@@ -18,6 +18,14 @@ runCommand "test-nightly" { } ''
     exit 1
   fi
 
+  # Check if we're using a nightly compiler
+  RUSTC_VERSION=$(${rdt.rust}/bin/rustc --version)
+  if ! echo "$RUSTC_VERSION" | grep -q "nightly"; then
+    echo "Error: Not using a nightly compiler"
+    echo "Current compiler version: $RUSTC_VERSION"
+    exit 1
+  fi
+
   ${package}/bin/rdt-example
 
   touch $out
