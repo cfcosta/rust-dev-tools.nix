@@ -1,9 +1,12 @@
-name: Job - Update Rust Overlay
+name: Update Rust Overlay
 
 on:
   workflow_dispatch:
   schedule:
     - cron: "0 0 * * *" # Every day at midnight
+
+permissions:
+  contents: write
 
 jobs:
   update-rust-overlay:
