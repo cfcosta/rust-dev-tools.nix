@@ -18,7 +18,11 @@ let
   inherit (pkgs.stdenv) mkDerivation;
 
   # Rust setup
-  rust = pkgs.rust-bin.${options.rust.channel}.${options.rust.version}.complete;
+  rustOptions = options.rust // {
+    channel = "stable";
+    version = "latest";
+  };
+  rust = pkgs.rust-bin.${rustOptions.channel}.${rustOptions.version}.complete;
 
   createRustPlatform = pkgs.makeRustPlatform {
     cargo = rust;

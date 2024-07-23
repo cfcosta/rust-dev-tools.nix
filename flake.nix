@@ -19,76 +19,88 @@
       ...
     }:
     let
-      version = rec {
-        stable = fromToolchain "stable" "latest";
-        nightly = fromToolchain "nightly" "latest";
+      overlay =
+        final: prev:
+        let
+          inherit (final.lib) mkDefault makeExtensible;
 
-        fromToolchain = channel: version: {
-          inherit channel version;
-          source = "toolchain";
-        };
+          version = rec {
+            stable = fromToolchain "stable" "latest";
+            nightly = fromToolchain "nightly" "latest";
 
-        fromToolchainFile = file: {
-          inherit file;
-          source = "toolchainFile";
-        };
-        fromRustToolchainFile = fromToolchainFile;
-        fromRustupToolchainFile = fromToolchainFile;
-
-        fromCargoToml = file: {
-          inherit file;
-          source = "cargo";
-        };
-        fromCargo = fromCargoToml;
-      };
-
-      defaultOptions = {
-        name = "dev";
-        cargoConfig = null;
-        dependencies = [ ];
-        env = { };
-        rust = version.fromToolchain "stable" "latest";
-        overrides = {
-          linux.useMold = true;
-          darwin.useLLD = true;
-        };
-      };
-
-      lib = {
-        inherit version;
-
-        setup =
-          pkgs: overrides:
-          let
-            utils = import ./utils { inherit pkgs; };
-
-            modules = import ./. {
-              inherit pkgs utils;
-              options = utils.deepMerge defaultOptions overrides;
+            fromToolchain = channel: version: {
+              inherit channel version;
+              source = "toolchain";
             };
 
-            inherit (modules) shellInputs;
-
-            devShell = pkgs.mkShell {
-              inputsFrom = [ shellInputs ];
-              buildInputs = [ ];
+            fromToolchainFile = file: {
+              inherit file;
+              source = "toolchainFile";
             };
-          in
-          {
-            inherit devShell shellInputs;
-            inherit (modules) rust;
 
-            createRustPlatform = modules.createRustPlatform;
-            buildRustPackage = modules.buildRustPackage;
+            fromCargoToml = file: {
+              inherit file;
+              source = "cargo";
+            };
           };
-      };
+
+          defaultOptions = {
+            name = "dev";
+            cargoConfig = null;
+            dependencies = [ ];
+            env = { };
+            rust = mkDefault (version.fromToolchain "stable" "latest");
+            overrides = {
+              linux.useMold = true;
+              darwin.useLLD = true;
+            };
+          };
+
+          makeSetup =
+            {
+              pkgs,
+              utils,
+              options,
+            }:
+            import ./. { inherit pkgs utils options; };
+
+          rust-dev-tools = makeExtensible (self: {
+            inherit version defaultOptions;
+
+            setup =
+              overrides:
+              let
+                utils = import ./utils { pkgs = final; };
+                options = utils.deepMerge defaultOptions overrides;
+                modules = makeSetup {
+                  pkgs = final;
+                  inherit utils options;
+                };
+                inherit (modules) shellInputs;
+                devShell = final.mkShell {
+                  inputsFrom = [ shellInputs ];
+                  buildInputs = [ ];
+                };
+              in
+              {
+                inherit devShell shellInputs;
+                inherit (modules) rust createRustPlatform buildRustPackage;
+              };
+          });
+        in
+        {
+          inherit rust-dev-tools;
+        };
 
       developmentEnv =
         system:
         let
           pkgs = import nixpkgs {
             inherit system;
-            overlays = [ rust-overlay.overlays.default ];
+            overlays = [
+              rust-overlay.overlays.default
+              overlay
+            ];
           };
         in
         {
@@ -97,90 +109,20 @@
           checks =
             let
               inherit (pkgs) runCommand;
-
-              runCase =
-                args:
-                let
-                  rdt = self.setup pkgs (
-                    args
-                    // {
-                      name = "rdt-example";
-                      dependencies = with pkgs; [ openssl ];
-                    }
-                  );
-
-                  package = rdt.buildRustPackage {
-                    src = ./example;
-                    cargoLock.lockFile = ./example/Cargo.lock;
-                  };
-                in
-                runCommand "test-build-rust-package" { } ''
-                  if [ ! -e ${package}/bin/rdt-example ]; then
-                    echo "Error: Built package does not contain the expected binary"
-                    exit 1
-                  fi
-
-                  ${package}/bin/rdt-example
-
-                  touch $out
-                '';
             in
             {
-              testBuildRustPackage = runCase { };
-              testStable = runCase { version = self.version.stable; };
-              testNightly = runCase { version = self.version.nightly; };
-              testFromToolchain = runCase { version = self.version.fromToolchain "nightly" "latest"; };
-              testFromToolchainFile = runCase {
-                version = self.version.fromToolchainFile ./example/rust-toolchain.toml;
-              };
-              testRustPackage =
-                let
-                  rdt = self.setup pkgs {
-                    name = "rdt-example";
-                    dependencies = with pkgs; [ openssl ];
-                  };
-                in
-                runCommand "test-rust-package" { } ''
-                  if [ ! -e ${rdt.rust}/bin/rustc ]; then
-                    echo "Error: Rust package does not contain the expected rustc binary"
-                    exit 1
-                  fi
-
-                  ${rdt.rust}/bin/rustc --version
-
-                  touch $out
-                '';
-              testBuildCommand =
-                let
-                  rdt = self.setup pkgs {
-                    name = "rdt-example";
-                    dependencies = with pkgs; [ openssl ];
-                  };
-
-                  package = rdt.buildRustPackage {
-                    src = ./example;
-                    cargoLock.lockFile = ./example/Cargo.lock;
-                  };
-                in
-                runCommand "test-build-command"
-                  {
-                    buildInputs = [
-                      rdt.shellInputs
-                      package
-                    ];
-                  }
-                  ''
-                    cp -rf ${./example} $out
-                    cd $out
-                    rdt-example fmt
-                  '';
+              testBuildRustPackage = pkgs.callPackage ./tests/build-rust-package.nix { };
+              testStable = pkgs.callPackage ./tests/stable.nix { };
+              testNightly = pkgs.callPackage ./tests/nightly.nix { };
+              testFromToolchain = pkgs.callPackage ./tests/from-toolchain.nix { };
+              testFromToolchainFile = pkgs.callPackage ./tests/from-toolchain-file.nix { };
+              testRustPackage = pkgs.callPackage ./tests/rust-package.nix { };
+              testBuildCommand = pkgs.callPackage ./tests/build-command.nix { };
             };
         };
     in
     {
-      inherit (lib) version setup;
-
-      overlays.default = rust-overlay.overlays.default;
+      overlays.default = nixpkgs.lib.composeExtensions rust-overlay.overlays.default overlay;
     }
     // flake-utils.lib.eachDefaultSystem developmentEnv;
 }
