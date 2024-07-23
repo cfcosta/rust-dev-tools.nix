@@ -39,10 +39,7 @@ let
     inherit (options.overrides) darwin linux;
     "x86_64-darwin" = optionals darwin.useLLD [ "-C link-arg=-fuse-ld=lld" ];
     "aarch64-darwin" = systemFlags."x86_64-darwin";
-    "x86_64-linux" = optionals linux.useMold [
-      "-C link-arg=-fuse-ld=mold"
-      "-C link-arg=-Wl,--separate-debug-file"
-    ];
+    "x86_64-linux" = optionals linux.useMold [ "-C link-arg=-fuse-ld=mold" ];
     "aarch64-linux" = systemFlags."x86_64-linux";
   };
 
