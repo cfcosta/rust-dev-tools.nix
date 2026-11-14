@@ -32,7 +32,8 @@ let
       outputHashes ? { },
     }:
     {
-      cargoLock = lockFile;
+      # Read first so generated lockfiles are realized before removing source context.
+      cargoLockContents = builtins.unsafeDiscardStringContext (builtins.readFile lockFile);
       inherit outputHashes;
     };
 
