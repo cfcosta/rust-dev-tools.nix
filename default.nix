@@ -2,7 +2,6 @@
   pkgs,
   utils,
   options,
-  crane,
 }:
 
 let
@@ -68,8 +67,7 @@ let
 
   # Build functions
   buildRustPackage = import ./build-rust-package.nix {
-    inherit (pkgs) lib;
-    craneLib = (crane.mkLib pkgs).overrideToolchain rust;
+    inherit pkgs rust;
     defaults = {
       name = options.name;
       env = env // options.env;
