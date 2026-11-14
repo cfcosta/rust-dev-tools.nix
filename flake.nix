@@ -15,6 +15,7 @@
     {
       self,
       nixpkgs,
+      crane,
       flake-utils,
       rust-overlay,
       ...
@@ -64,7 +65,7 @@
             utils = import ./utils { inherit pkgs; };
 
             modules = import ./. {
-              inherit pkgs utils;
+              inherit pkgs utils crane;
               options = utils.deepMerge defaultOptions overrides;
             };
 
