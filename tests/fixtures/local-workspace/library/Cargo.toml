@@ -1,0 +1,11 @@
+[package]
+name = "local-library"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+path = "code/library.rs"
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+cfg-if = "=1.0.0"

@@ -1,0 +1,8 @@
+[package]
+name = "local-macros"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+proc-macro = true
+path = "src/macro.rs"

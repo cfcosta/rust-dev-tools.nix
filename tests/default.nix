@@ -15,6 +15,8 @@ let
   rejected = lib.mapAttrs (_: package: !(builtins.tryEval package.drvPath).success) semanticErrors;
 in
 {
+  testLocalLifecycle = import ./local-lifecycle.nix { inherit pkgs self; };
+
   testCacheReuse =
     assert lib.assertMsg (
       artifactPath before == artifactPath after

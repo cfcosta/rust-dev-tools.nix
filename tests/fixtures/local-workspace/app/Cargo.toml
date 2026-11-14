@@ -1,0 +1,12 @@
+[package]
+name = "rdt-workspace-probe"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "rdt-workspace-probe"
+path = "bin/entry.rs"
+
+[dependencies]
+local-library = { path = "../library" }
+local-macros = { path = "../macros" }
