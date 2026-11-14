@@ -2,6 +2,7 @@
   pkgs,
   utils,
   options,
+  crane,
 }:
 
 let
@@ -66,26 +67,16 @@ let
   };
 
   # Build functions
-  buildRustPackage =
-    {
-      name ? options.name,
-      buildInputs ? [ ],
-      nativeBuildInputs ? [ ],
-      ...
-    }@args:
-    let
-      rustPlatform = createRustPlatform;
-      defaultBuildInputs = options.dependencies;
-      defaultNativeBuildInputs = [ pkgs.pkg-config ] ++ systemSpecificDependencies.${pkgs.system};
-    in
-    rustPlatform.buildRustPackage (
-      args
-      // {
-        inherit name env;
-        buildInputs = defaultBuildInputs ++ buildInputs;
-        nativeBuildInputs = defaultNativeBuildInputs ++ nativeBuildInputs;
-      }
-    );
+  buildRustPackage = import ./build-rust-package.nix {
+    inherit (pkgs) lib;
+    craneLib = (crane.mkLib pkgs).overrideToolchain rust;
+    defaults = {
+      name = options.name;
+      env = env // options.env;
+      buildInputs = options.dependencies;
+      nativeBuildInputs = [ pkgs.pkg-config ] ++ systemSpecificDependencies.${pkgs.system};
+    };
+  };
 
   # Script generation
   watch = cmd: ''
