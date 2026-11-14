@@ -2,7 +2,9 @@
 
 Date: 2026-11-14
 
-Status: Accepted
+Status: Superseded by [2. Own the compiled dependency cache](local-cache.md)
+
+This document records the earlier Crane-backed design. The current builder has no Crane dependency. The original decision remains below for historical context.
 
 ## Context
 
