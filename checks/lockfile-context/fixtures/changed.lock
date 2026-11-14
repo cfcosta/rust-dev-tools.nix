@@ -1,0 +1,6 @@
+# A changed explicit lockfile must invalidate dependencies.
+version = 3
+
+[[package]]
+name = "lock-context"
+version = "0.1.0"
