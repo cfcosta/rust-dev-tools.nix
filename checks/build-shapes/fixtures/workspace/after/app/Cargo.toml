@@ -1,0 +1,8 @@
+[package]
+name = "rdt-workspace-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rdt-shape-support = { path = "../support" }
+rdt-shape-macro = { path = "../shape-macro" }
