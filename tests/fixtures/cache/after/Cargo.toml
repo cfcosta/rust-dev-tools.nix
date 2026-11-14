@@ -1,0 +1,10 @@
+[package]
+name = "rdt-cache-probe"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+extra = []
+
+[dependencies]
+cfg-if = "=1.0.0"
