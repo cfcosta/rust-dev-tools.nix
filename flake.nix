@@ -176,7 +176,8 @@
                     cd $out
                     rdt-example fmt
                   '';
-            };
+            }
+            // import ./tests { inherit pkgs self; };
         };
     in
     {
