@@ -178,7 +178,8 @@
                     rdt-example fmt
                   '';
             }
-            // import ./tests { inherit pkgs self; };
+            // import ./tests { inherit pkgs self; }
+            // import ./checks/build-shapes { inherit pkgs self; };
         };
     in
     {
