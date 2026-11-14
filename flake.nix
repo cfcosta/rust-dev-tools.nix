@@ -129,6 +129,7 @@
             in
             {
               testBuildRustPackage = runCase { };
+              testExplicitLockfileContext = import ./checks/lockfile-context { inherit pkgs self; };
               testStable = runCase { version = self.version.stable; };
               testNightly = runCase { version = self.version.nightly; };
               testFromToolchain = runCase { version = self.version.fromToolchain "nightly" "latest"; };
