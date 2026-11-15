@@ -3,7 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
-    flake-utils.url = "github:numtide/flake-utils";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -14,7 +13,6 @@
     {
       self,
       nixpkgs,
-      flake-utils,
       rust-overlay,
       ...
     }:
@@ -179,11 +177,19 @@
             // import ./tests { inherit pkgs self; }
             // import ./checks/build-shapes { inherit pkgs self; };
         };
+
+      perSystem = nixpkgs.lib.genAttrs [
+        "aarch64-darwin"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "x86_64-linux"
+      ] developmentEnv;
     in
     {
       inherit (lib) version setup;
 
       overlays.default = rust-overlay.overlays.default;
-    }
-    // flake-utils.lib.eachDefaultSystem developmentEnv;
+      checks = builtins.mapAttrs (_: env: env.checks) perSystem;
+      devShells = builtins.mapAttrs (_: env: env.devShells) perSystem;
+    };
 }
