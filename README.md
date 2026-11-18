@@ -123,17 +123,20 @@ This is a supported subset of the Nixpkgs builder interface, not a drop-in repla
 | `doCheck` | Run package tests and prepare dev-dependencies; defaults to `true`. |
 | `useNextest` | Run the tests with cargo-nextest instead of `cargo test`; defaults to `false`. |
 | `nativeCheckInputs` | Tools the tests need, in the final stage only. |
+| `preBuildDependencies` | Commands before Cargo in the dependency stage, such as staging a cache a dependency's build script reads. |
+| `preBuild` | Commands before Cargo in the final stage, such as copying generated assets into the source. Commands both stages need go in both. |
 | `postInstall` | Additional final-package installation commands. |
 | `postFixup` | Final-package commands after fixup, such as `wrapProgram`. |
 | `desktopItems` | Desktop entries for `copyDesktopItems`, which must be in `nativeBuildInputs`. |
 | `doInstallCheck`, `installCheckPhase` | Checks against the installed package. |
+| `disallowedReferences` | Store paths the final package must not reference, such as the toolchain. |
 | `meta`, `passthru` | Final-package metadata and caller passthru attributes. `passthru.cargoArtifacts` and `passthru.buildOnly` are reserved. |
 
 For Git dependencies, place source hashes in `cargoLock.outputHashes`, keyed by `"crate-name-version"`. A supplied lockfile replaces `src/Cargo.lock` in both compilation stages. The builder reads its contents before removing source-path context, so `cargoLock.lockFile = "${src}/Cargo.lock"` does not make unrelated source edits invalidate dependencies. Changed lockfile contents still invalidate the dependency artifacts.
 
 Environment precedence is generated defaults, then `setup`'s `env`, then the package `env`. Later values replace earlier ones, including compiler and target-linker overrides. An explicit `RUSTFLAGS` replaces the generated linker flags in both compilation stages. `CARGO_PROFILE` is reserved in user environment sets; select the profile with `buildType`. `CARGO_HOME` and `CARGO_TARGET_DIR` receive build-local defaults unless supplied in the shared environment.
 
-The builder rejects hash-based vendoring options such as `cargoHash` and `cargoSha256`, vendor-directory overrides, raw Cargo flags, custom build and check phases, source hooks, patches, Nextest filters, auditing options, and sysroot controls. Preprocess source outside this builder if needed. There is no public `cargoArtifacts` input or separate dependency-stage options object.
+The builder rejects hash-based vendoring options such as `cargoHash` and `cargoSha256`, vendor-directory overrides, raw Cargo flags, custom build and check phases, patches, Nextest filters, auditing options, and sysroot controls. Preprocess source outside this builder, or in `preBuild`; the dependency stage builds stubs of the local crates, so `preBuildDependencies` cannot reach them. There is no public `cargoArtifacts` input or separate dependency-stage options object.
 
 `createRustPlatform` remains available as the existing lower-level toolchain platform export. It is not the cached package workflow described here.
 

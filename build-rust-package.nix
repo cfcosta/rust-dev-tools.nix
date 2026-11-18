@@ -23,11 +23,14 @@
   doCheck ? true,
   useNextest ? false,
   nativeCheckInputs ? [ ],
+  preBuildDependencies ? "",
+  preBuild ? "",
   postInstall ? "",
   postFixup ? "",
   desktopItems ? [ ],
   doInstallCheck ? false,
   installCheckPhase ? null,
+  disallowedReferences ? [ ],
   meta ? { },
   passthru ? { },
 }:
@@ -171,7 +174,9 @@ let
     // {
       name = "${packageName}-dependencies-${packageVersion}";
       src = dummySource;
+      preBuild = preBuildDependencies;
       buildPhase = ''
+        runHook preBuild
         ${cargo "build"} ${buildArgs}
         ${lib.optionalString doCheck "${cargo "test"} ${checkArgs} --no-run"}
       '';
@@ -214,10 +219,12 @@ pkgs.stdenv.mkDerivation (
       src
       name
       doCheck
+      preBuild
       postInstall
       postFixup
       desktopItems
       doInstallCheck
+      disallowedReferences
       meta
       ;
     dontFixup = false;
@@ -230,6 +237,7 @@ pkgs.stdenv.mkDerivation (
         ${cargo "metadata"} --locked --offline --no-deps --format-version 1 ${featureArgs} > "$NIX_BUILD_TOP/workspace.json"
       '';
     buildPhase = ''
+      runHook preBuild
       export cargoBuildLog="$NIX_BUILD_TOP/cargo-build.json"
       ${cargo "build"} ${buildArgs} --message-format json-render-diagnostics > "$cargoBuildLog"
       ${pkgs.python3}/bin/python ${./rust-cache/install.py} \

@@ -91,6 +91,19 @@ let
         exec = "rdt-workspace-app";
       })
     ];
+    # The dependency stage's target directory reaches the final stage.
+    preBuildDependencies = ''
+      mkdir -p "$CARGO_TARGET_DIR"
+      echo dependencies > "$CARGO_TARGET_DIR/rdt-hooks"
+    '';
+    preBuild = ''
+      echo package >> "$CARGO_TARGET_DIR/rdt-hooks"
+    '';
+    postInstall = ''
+      mkdir -p "$out/share"
+      cp "$CARGO_TARGET_DIR/rdt-hooks" "$out/share/hooks"
+    '';
+    disallowedReferences = [ checkTool ];
     postFixup = ''
       echo fixed > "$out/share/fixup"
     '';
@@ -105,6 +118,7 @@ in
   testPackageSelection = pkgs.runCommand "test-package-selection" { } ''
     test "$(ls ${selected}/bin)" = rdt-workspace-app
     test "$(cat ${selected}/share/fixup)" = fixed
+    test "$(cat ${selected}/share/hooks)" = "$(printf 'dependencies\npackage')"
     test -f ${selected}/share/install-checked
     test -f ${selected}/share/applications/rdt-selected.desktop
     touch "$out"
