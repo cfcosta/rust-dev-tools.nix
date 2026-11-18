@@ -1,0 +1,18 @@
+{
+  "plans": {
+    "07d91fc11616b47d764c42803319abed80590e5fa307b4efe115f283b170cf82": {
+      "inputs": "cf6aa4b7a135a0b78d299ecff1e18f61698468d41983ac4f0ec933d1ffc83073",
+      "nodes": [
+        {
+          "deps": [],
+          "features": [],
+          "host": false,
+          "name": "smallvec",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "1.16.6"
+        }
+      ]
+    }
+  },
+  "version": 1
+}

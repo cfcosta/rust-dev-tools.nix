@@ -132,6 +132,9 @@ This is a supported subset of the Nixpkgs builder interface, not a drop-in repla
 | `desktopItems` | Desktop entries for `copyDesktopItems`, which must be in `nativeBuildInputs`. |
 | `doInstallCheck`, `installCheckPhase` | Checks against the installed package. |
 | `disallowedReferences` | Store paths the final package must not reference, such as the toolchain. |
+| `unitPlan` | A `rust-units.json` from `nix run github:cfcosta/rust-dev-tools.nix#plan`: each planned registry crate then builds in a derivation of its own. |
+| `crateOverrides` | Native inputs, `env`, and `preBuild` for planned crates, by crate name, in the form of Nixpkgs' `defaultCrateOverrides`. |
+| `dependencyLayers` | Other packages' `cargoArtifacts` to start the dependency stage from. |
 | `meta`, `passthru` | Final-package metadata and caller passthru attributes. `passthru.cargoArtifacts` and `passthru.buildOnly` are reserved. |
 
 For Git dependencies, place source hashes in `cargoLock.outputHashes`, keyed by `"crate-name-version"`. A supplied lockfile replaces `src/Cargo.lock` in both compilation stages. The builder reads its contents before removing source-path context, so `cargoLock.lockFile = "${src}/Cargo.lock"` does not make unrelated source edits invalidate dependencies. Changed lockfile contents still invalidate the dependency artifacts.
@@ -157,6 +160,33 @@ Both stages pass rustc `--remap-path-prefix` for the vendored crates and the too
 The returned package exposes `package.cargoArtifacts` for inspecting the dependency derivation. It is diagnostic output, not an artifact override. Change compilation settings through `buildRustPackage` arguments rather than a later `overrideAttrs`, which is outside the shared-input guarantee.
 
 See [the local caching decision](docs/decisions/local-cache.md) for the implementation choice and compatibility limits.
+
+## Share compiled crates between builds
+
+With a unit plan, each registry crate a build compiles comes from a derivation of its own. Builds that compile a crate the same way, in one project or in several, then share that derivation, and a lockfile change rebuilds only the crates it changes.
+
+Write the plan from the project's directory, and run it again after changing dependencies, features, or the Cargo profile:
+
+```bash
+nix run github:cfcosta/rust-dev-tools.nix#plan
+```
+
+It writes `rust-units.json` for every package the flake builds with `buildRustPackage`, on the current system. Give it to the package with `unitPlan = ./rust-units.json;` and commit it. A missing or out-of-date plan only means the dependencies build in one derivation, as without a plan, and evaluation says so.
+
+A crate's derivation has the inputs that decide what Cargo compiles: the crate and the crates it needs, at their locked versions and resolved features, the toolchain, RUSTFLAGS, the Cargo profile and configuration, and the native inputs it declares. It does not have the package's own `buildInputs` or `env`. Nixpkgs' `defaultCrateOverrides` supply what common `-sys` crates need; give others theirs with `crateOverrides`, which takes the same form:
+
+```nix
+crateOverrides.candle-kernels = _: {
+  nativeBuildInputs = [ pkgs.cudaPackages.cuda_nvcc ];
+  env.CUDA_PATH = "${pkgs.cudaPackages.cudatoolkit}";
+};
+```
+
+A crate that needs a native input it was not given fails its own build. Cargo still checks every ready-made crate in the package's own build, so a crate that does not match compiles there again rather than being used. Crates from git or local paths, and crates that need one, always build in the package's own dependency stage. Sharing works in the Linux sandbox, where every build sees the vendored crates at the same path; elsewhere a plan still splits the build but shares less.
+
+`dependencyLayers` takes other packages' `cargoArtifacts` directly: the dependency stage starts from their compiled crates and stores only what it adds.
+
+See [the unit derivations decision](docs/decisions/unit-derivations.md) for how the plan is made and checked.
 
 ## Supported source layouts
 

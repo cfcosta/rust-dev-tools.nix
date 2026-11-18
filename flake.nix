@@ -51,8 +51,7 @@
         inherit version;
 
         # rustfmt and cargo-fmt alone, for a formatter outside a toolchain.
-        rustfmt =
-          pkgs: rust: import ./rust-toolchain { inherit pkgs; } (rust // { formatterOnly = true; });
+        rustfmt = pkgs: rust: import ./rust-toolchain { inherit pkgs; } (rust // { formatterOnly = true; });
 
         setup =
           pkgs: overrides:
@@ -87,6 +86,24 @@
         in
         {
           devShells.default = pkgs.mkShell { packages = with pkgs; [ nixfmt-rfc-style ]; };
+
+          # Writes the unit plan of the flake in the current directory.
+          apps.plan = {
+            type = "app";
+            program = "${
+              pkgs.writeShellApplication {
+                name = "rdt-plan";
+                runtimeInputs = with pkgs; [
+                  jq
+                  python3
+                ];
+                text = ''
+                  export RDT_PLANNER=${./rust-cache/plan-units.py}
+                  exec bash ${./scripts/plan-units.sh} "$@"
+                '';
+              }
+            }/bin/rdt-plan";
+          };
 
           checks =
             let
@@ -173,7 +190,8 @@
             // import ./checks/build-shapes { inherit pkgs self; }
             // import ./checks/toolchains { inherit pkgs self; }
             // import ./checks/runtime-closure { inherit pkgs self; }
-            // import ./checks/dependency-layers { inherit pkgs self; };
+            // import ./checks/dependency-layers { inherit pkgs self; }
+            // import ./checks/unit-plan { inherit pkgs self; };
         };
 
       perSystem = nixpkgs.lib.genAttrs [
@@ -186,6 +204,7 @@
       inherit (lib) version setup rustfmt;
 
       checks = builtins.mapAttrs (_: env: env.checks) perSystem;
+      apps = builtins.mapAttrs (_: env: env.apps) perSystem;
       devShells = builtins.mapAttrs (_: env: env.devShells) perSystem;
     };
 }

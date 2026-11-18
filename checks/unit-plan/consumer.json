@@ -1,0 +1,26 @@
+{
+  "plans": {
+    "07d91fc11616b47d764c42803319abed80590e5fa307b4efe115f283b170cf82": {
+      "inputs": "7e9ca30a08a6903be67d99fe983a57b3cddc7470d3b1b9f2d07893e715aa3ce9",
+      "nodes": [
+        {
+          "deps": [],
+          "features": [],
+          "host": false,
+          "name": "itoa",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "1.0.18"
+        },
+        {
+          "deps": [],
+          "features": [],
+          "host": false,
+          "name": "smallvec",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "version": "1.16.6"
+        }
+      ]
+    }
+  },
+  "version": 1
+}
