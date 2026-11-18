@@ -50,6 +50,10 @@
       lib = {
         inherit version;
 
+        # rustfmt and cargo-fmt alone, for a formatter outside a toolchain.
+        rustfmt =
+          pkgs: rust: import ./rust-toolchain { inherit pkgs; } (rust // { formatterOnly = true; });
+
         setup =
           pkgs: overrides:
           let
@@ -178,7 +182,7 @@
       ] developmentEnv;
     in
     {
-      inherit (lib) version setup;
+      inherit (lib) version setup rustfmt;
 
       checks = builtins.mapAttrs (_: env: env.checks) perSystem;
       devShells = builtins.mapAttrs (_: env: env.devShells) perSystem;

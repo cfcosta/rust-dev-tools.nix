@@ -125,6 +125,20 @@ assert lib.assertMsg (rejects (
         touch "$out"
       '';
 
+  # rustfmt alone: no compiler or cargo on PATH, and the nightly's options.
+  testRustfmtStandalone =
+    let
+      fmt = self.rustfmt pkgs (self.version.fromToolchain "nightly" "2025-06-01");
+    in
+    pkgs.runCommand "test-rustfmt-standalone" { } ''
+      test "$(ls ${fmt}/bin)" = "$(printf 'cargo-fmt\nrustfmt')"
+      test "$(basename ${lib.getExe fmt})" = rustfmt
+      printf 'use std::fmt::Debug;\nuse std::fmt::Display;\nfn main() {}\n' > main.rs
+      ${fmt}/bin/rustfmt --edition 2021 --config imports_granularity=Crate main.rs
+      grep -qx 'use std::fmt::{Debug, Display};' main.rs
+      touch "$out"
+    '';
+
   # A stable compiler formatting with a nightly's unstable rustfmt options.
   testToolchainNightlyRustfmt =
     let

@@ -231,8 +231,15 @@ let
 
       # With `rustfmt` taken from another toolchain, this one ships none, so
       # cargo cannot find a second cargo-fmt beside itself.
+      # A formatter alone needs rustfmt and the compiler libraries it links.
       hostComponents =
-        filter (c: !(options.withoutRustfmt or false) || name c != "rustfmt-preview" && c != "rustfmt")
+        if options.formatterOnly or false then
+          [
+            "rustc"
+            "rustfmt"
+          ]
+        else
+          filter (c: !(options.withoutRustfmt or false) || name c != "rustfmt-preview" && c != "rustfmt")
           (
             required
             ++ optionals (wanted.profile != "minimal") (filter (c: entry c host != null) development)
@@ -259,7 +266,7 @@ let
         );
     in
     stdenv.mkDerivation (finalAttrs: {
-      pname = "rust-toolchain";
+      pname = if options.formatterOnly or false then "rustfmt" else "rust-toolchain";
       version = found.label;
 
       srcs = map tarball parts;
@@ -294,12 +301,16 @@ let
       # calling gcc-ld/ld.lld past Nix's linker wrapper, so binaries lose the
       # runpath to libraries such as libstdc++. Nixpkgs' wrapped ld.lld adds
       # it back.
-      + lib.optionalString stdenv.hostPlatform.isLinux ''
+      + lib.optionalString (stdenv.hostPlatform.isLinux && !(options.formatterOnly or false)) ''
         for gccld in "$out"/lib/rustlib/*/bin/gcc-ld; do
           if [ -e "$gccld/ld.lld" ]; then
             ln -sf ${pkgs.llvmPackages.bintools}/bin/ld.lld "$gccld/ld.lld"
           fi
         done
+      ''
+      + lib.optionalString (options.formatterOnly or false) ''
+        find "$out/bin" -mindepth 1 ! -name rustfmt ! -name cargo-fmt -delete
+        rm -rf "$out/lib/rustlib" "$out/libexec" "$out/share"
       ''
       + ''
         runHook postInstall
@@ -316,6 +327,9 @@ let
 
       meta = {
         description = "Rust ${found.label} toolchain";
+      }
+      // lib.optionalAttrs (options.formatterOnly or false) {
+        mainProgram = "rustfmt";
         platforms = lib.platforms.all;
       };
     });

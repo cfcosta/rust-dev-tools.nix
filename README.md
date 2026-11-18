@@ -83,6 +83,8 @@ Every toolchain has `rustc`, `cargo`, and the host's `rust-std`. Unless the prof
 
 To build with stable but format with a nightly's unstable rustfmt options, give `rustfmt` a second selection: `rust = version.fromToolchainFile ./rust-toolchain.toml // { rustfmt = version.fromToolchain "nightly" "2026-11-18"; };`. The toolchain then has that nightly's `rustfmt` and `cargo-fmt`, and the rest is the stable release.
 
+For a formatter outside any toolchain, such as one a treefmt configuration installs, `rust-dev-tools.rustfmt pkgs (version.fromToolchain "nightly" "2026-11-18")` has only `rustfmt` and `cargo-fmt`, with the compiler libraries rustfmt links. It leaves out `cargo`, `rust-std`, and the linker, so it closes over about 390 MiB rather than a toolchain's 1.4 GiB.
+
 The index in `rust-toolchain/manifests.json` holds one sha256 per dated release manifest: every stable release from 1.8.0 except 1.14.0, whose manifest has no date, and each beta and nightly from 2025-01-01. Evaluation fetches the selected manifest, and the components are fixed-output fetches of the URLs and hashes it lists. A daily workflow (`.github/workflows/flake.yml`) runs `scripts/update-rust-manifests.sh` and commits new releases. Run it yourself to add releases sooner, or `scripts/update-rust-manifests.sh --since YYYY-MM-DD` to also index older betas and nightlies. See [the toolchain decision](docs/decisions/own-toolchain.md).
 
 Configure features, profile, native tools, and final installation through the package call:
