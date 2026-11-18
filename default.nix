@@ -50,16 +50,10 @@ let
     );
   };
 
-  # System-specific dependencies
+  # System-specific dependencies. Nixpkgs' Darwin stdenv carries the
+  # Apple SDK and its frameworks.
   systemSpecificDependencies = {
-    "aarch64-darwin" =
-      (with pkgs.darwin.apple_sdk.frameworks; [
-        CoreFoundation
-        CoreServices
-        SystemConfiguration
-        Security
-      ])
-      ++ optionals darwin.useLLD [ pkgs.lld ];
+    "aarch64-darwin" = optionals darwin.useLLD [ pkgs.lld ];
     "x86_64-darwin" = systemSpecificDependencies."aarch64-darwin";
     "x86_64-linux" = optionals linux.useMold [ pkgs.mold ];
     "aarch64-linux" = systemSpecificDependencies."x86_64-linux";
