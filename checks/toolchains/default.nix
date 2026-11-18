@@ -102,4 +102,27 @@ assert lib.assertMsg (rejects (
       rustc --crate-type=rlib --target wasm32-unknown-unknown lib.rs
       touch "$out"
     '';
+
+  # A stable compiler formatting with a nightly's unstable rustfmt options.
+  testToolchainNightlyRustfmt =
+    let
+      selected = toolchain (
+        self.version.fromToolchain "stable" "1.85.0"
+        // {
+          rustfmt = self.version.fromToolchain "nightly" "2025-06-01";
+        }
+      );
+    in
+    runCommandCC "test-toolchain-nightly-rustfmt" { nativeBuildInputs = [ selected ]; } ''
+      rustc --version | grep -q '^rustc 1.85.0 '
+      rustfmt --version | grep -q -- '-nightly '
+      cargo clippy --version
+      mkdir -p probe/src && cd probe
+      printf '[package]\nname = "probe"\nversion = "0.1.0"\nedition = "2021"\n' > Cargo.toml
+      echo 'imports_granularity = "Crate"' > rustfmt.toml
+      printf 'use std::fmt::Debug;\nuse std::fmt::Display;\nfn main() {}\n' > src/main.rs
+      cargo fmt
+      grep -qx 'use std::fmt::{Debug, Display};' src/main.rs
+      touch "$out"
+    '';
 }

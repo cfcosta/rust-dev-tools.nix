@@ -229,10 +229,15 @@ let
         in
         if found' == null then throw "Rust ${found.label} has no ${component} for ${target}." else found';
 
+      # With `rustfmt` taken from another toolchain, this one ships none, so
+      # cargo cannot find a second cargo-fmt beside itself.
       hostComponents =
-        required
-        ++ optionals (wanted.profile != "minimal") (filter (c: entry c host != null) development)
-        ++ wanted.components;
+        filter (c: !(options.withoutRustfmt or false) || name c != "rustfmt-preview" && c != "rustfmt")
+          (
+            required
+            ++ optionals (wanted.profile != "minimal") (filter (c: entry c host != null) development)
+            ++ wanted.components
+          );
 
       parts =
         map (component: need component host) (unique hostComponents)
@@ -298,5 +303,38 @@ let
         platforms = lib.platforms.all;
       };
     };
+
+  # `options.rustfmt`, a second selection, supplies rustfmt and cargo-fmt:
+  # a stable compiler with a nightly's formatting options. The result links
+  # every other file to the main toolchain, so rustc still finds its own
+  # sysroot.
+  withRustfmt =
+    options:
+    let
+      main = toolchain (removeAttrs options [ "rustfmt" ] // { withoutRustfmt = true; });
+      fmt = toolchain (
+        options.rustfmt
+        // {
+          profile = "minimal";
+          components = [ "rustfmt" ];
+          targets = [ ];
+        }
+      );
+    in
+    pkgs.runCommand "rust-toolchain-${main.version}-rustfmt-${fmt.version}"
+      {
+        passthru = main.passthru // {
+          rustfmt = fmt;
+        };
+        inherit (main) meta;
+      }
+      ''
+        mkdir -p "$out/bin"
+        for entry in ${main}/*; do
+          [ "$(basename "$entry")" = bin ] || ln -s "$entry" "$out/"
+        done
+        ln -s ${main}/bin/* "$out/bin/"
+        ln -s ${fmt}/bin/rustfmt ${fmt}/bin/cargo-fmt "$out/bin/"
+      '';
 in
-toolchain
+options: if (options.rustfmt or null) == null then toolchain options else withRustfmt options
