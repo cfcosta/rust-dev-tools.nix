@@ -167,7 +167,8 @@
             }
             // import ./tests { inherit pkgs self; }
             // import ./checks/build-shapes { inherit pkgs self; }
-            // import ./checks/toolchains { inherit pkgs self; };
+            // import ./checks/toolchains { inherit pkgs self; }
+            // import ./checks/runtime-closure { inherit pkgs self; };
         };
 
       perSystem = nixpkgs.lib.genAttrs [

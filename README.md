@@ -127,7 +127,7 @@ This is a supported subset of the Nixpkgs builder interface, not a drop-in repla
 | `postFixup` | Final-package commands after fixup, such as `wrapProgram`. |
 | `desktopItems` | Desktop entries for `copyDesktopItems`, which must be in `nativeBuildInputs`. |
 | `doInstallCheck`, `installCheckPhase` | Checks against the installed package. |
-| `meta`, `passthru` | Final-package metadata and caller passthru attributes. `passthru.cargoArtifacts` is reserved. |
+| `meta`, `passthru` | Final-package metadata and caller passthru attributes. `passthru.cargoArtifacts` and `passthru.buildOnly` are reserved. |
 
 For Git dependencies, place source hashes in `cargoLock.outputHashes`, keyed by `"crate-name-version"`. A supplied lockfile replaces `src/Cargo.lock` in both compilation stages. The builder reads its contents before removing source-path context, so `cargoLock.lockFile = "${src}/Cargo.lock"` does not make unrelated source edits invalidate dependencies. Changed lockfile contents still invalidate the dependency artifacts.
 
@@ -146,6 +146,8 @@ The dependency stage builds a stub project from manifests, Cargo configuration, 
 The builder preserves Cargo fingerprints and lets Cargo decide whether each external artifact is fresh. It does not force reuse when compilation settings differ. Referencing the whole application source from an environment variable or another shared input can also make source edits invalidate dependencies.
 
 Unrelated files included in `src` can still invalidate the final package. Filter your source when appropriate, without excluding files needed by build scripts or `include_str!`.
+
+Both stages pass rustc `--remap-path-prefix` for the vendored crates and the toolchain, so the panic locations compiled into a binary do not keep either in its runtime closure; `package.buildOnly` lists the two paths. The dependency derivation is a build input only, so garbage collection removes it unless something roots the package's build.
 
 The returned package exposes `package.cargoArtifacts` for inspecting the dependency derivation. It is diagnostic output, not an artifact override. Change compilation settings through `buildRustPackage` arguments rather than a later `overrideAttrs`, which is outside the shared-input guarantee.
 

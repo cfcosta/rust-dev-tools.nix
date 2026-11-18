@@ -155,6 +155,9 @@ let
       export CARGO_BUILD_JOBS="''${CARGO_BUILD_JOBS:-$NIX_BUILD_CORES}"
       export CARGO_INCREMENTAL="''${CARGO_INCREMENTAL:-0}"
       export RUST_TEST_THREADS="''${RUST_TEST_THREADS:-$NIX_BUILD_CORES}"
+      # Panic locations name source files. Remapping the vendored crates and
+      # the toolchain's rust-src keeps both out of the package's closure.
+      export RUSTFLAGS="''${RUSTFLAGS:-} --remap-path-prefix=${vendor}=/cargo-vendor-dir --remap-path-prefix=$(${rust}/bin/rustc --print sysroot)=/rust-toolchain"
       mkdir -p "$CARGO_HOME"
       # Source overrides are copied into both stages before Cargo sees them.
       cp ${lockFile} Cargo.lock
@@ -197,8 +200,8 @@ assert lib.assertMsg (
   !(mergedEnv ? CARGO_PROFILE)
 ) "buildRustPackage: env.CARGO_PROFILE is reserved; select the shared profile with buildType";
 assert lib.assertMsg (
-  !(passthru ? cargoArtifacts)
-) "buildRustPackage: passthru.cargoArtifacts is reserved for generated dependency artifacts";
+  !(passthru ? cargoArtifacts || passthru ? buildOnly)
+) "buildRustPackage: passthru.cargoArtifacts and passthru.buildOnly are reserved for the builder";
 assert lib.assertMsg (
   builtins.all builtins.isString (cargoPackages ++ checkPackages)
 ) "buildRustPackage: cargoPackages and checkPackages must be lists of Cargo package names";
@@ -249,6 +252,11 @@ pkgs.stdenv.mkDerivation (
     '';
     passthru = passthru // {
       inherit cargoArtifacts;
+      # The build-time paths the remapping keeps out of the closure.
+      buildOnly = [
+        vendor
+        (rust.sysroot or rust)
+      ];
     };
   }
   // lib.optionalAttrs (installCheckPhase != null) { inherit installCheckPhase; }

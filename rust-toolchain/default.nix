@@ -258,7 +258,7 @@ let
             }
         );
     in
-    stdenv.mkDerivation {
+    stdenv.mkDerivation (finalAttrs: {
       pname = "rust-toolchain";
       version = found.label;
 
@@ -306,6 +306,9 @@ let
       '';
 
       passthru = {
+        # The directory rustc reports as its sysroot, also through the
+        # rustfmt join below: the path compiled binaries can name.
+        sysroot = finalAttrs.finalPackage;
         inherit (found) label;
         inherit (wanted) channel;
         components = unique hostComponents;
@@ -315,7 +318,7 @@ let
         description = "Rust ${found.label} toolchain";
         platforms = lib.platforms.all;
       };
-    };
+    });
 
   # `options.rustfmt`, a second selection, supplies rustfmt and cargo-fmt:
   # a stable compiler with a nightly's formatting options. The result links
