@@ -1,4 +1,4 @@
-name: Update Rust Overlay
+name: Update Rust Manifests
 
 on:
   workflow_dispatch:
@@ -9,13 +9,14 @@ permissions:
   contents: write
 
 jobs:
-  update-rust-overlay:
+  update-rust-manifests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - run: nix flake lock --update-input rust-overlay
+      - run: nix shell nixpkgs#jq nixpkgs#curl -c scripts/update-rust-manifests.sh
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: "chore: update rust-overlay"
+          commit_message: "chore: update rust manifests"
+          file_pattern: rust-toolchain/manifests.json

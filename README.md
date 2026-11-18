@@ -81,7 +81,7 @@ The `rust` option takes one of these selections:
 
 Every toolchain has `rustc`, `cargo`, and the host's `rust-std`. Unless the profile is `minimal`, it also has `clippy`, `rustfmt`, `rust-analyzer`, and `rust-src` when the release ships them. Add components or targets with `rust = version.fromToolchain "stable" "1.85.0" // { components = [ "llvm-tools" ]; targets = [ "wasm32-unknown-unknown" ]; };`. A requested component the release lacks fails during evaluation.
 
-The index in `rust-toolchain/manifests.json` holds one sha256 per dated release manifest: every stable release from 1.8.0 except 1.14.0, whose manifest has no date, and each beta and nightly from 2025-01-01. Evaluation fetches the selected manifest, and the components are fixed-output fetches of the URLs and hashes it lists. Run `scripts/update-rust-manifests.sh` to add newer releases, or `scripts/update-rust-manifests.sh --since YYYY-MM-DD` to also index older betas and nightlies. See [the toolchain decision](docs/decisions/own-toolchain.md).
+The index in `rust-toolchain/manifests.json` holds one sha256 per dated release manifest: every stable release from 1.8.0 except 1.14.0, whose manifest has no date, and each beta and nightly from 2025-01-01. Evaluation fetches the selected manifest, and the components are fixed-output fetches of the URLs and hashes it lists. A daily workflow (`.github/workflows/flake.yml`) runs `scripts/update-rust-manifests.sh` and commits new releases. Run it yourself to add releases sooner, or `scripts/update-rust-manifests.sh --since YYYY-MM-DD` to also index older betas and nightlies. See [the toolchain decision](docs/decisions/own-toolchain.md).
 
 Configure features, profile, native tools, and final installation through the package call:
 
