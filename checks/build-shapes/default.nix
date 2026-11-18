@@ -66,8 +66,50 @@ let
       cp ${before}/share/rdt-build-shapes/cargo-build.json "$out/before.json"
       cp ${after}/share/rdt-build-shapes/cargo-build.json "$out/after.json"
     '';
+  checkTool = pkgs.writeShellScriptBin "rdt-check-tool" ''
+    printf check
+  '';
+  # One package built, another tested under nextest with a check-only input,
+  # and the final-package hooks.
+  selected = rdt.buildRustPackage {
+    src = source "workspace" "before";
+    pname = "rdt-selected-shape";
+    version = "0.1.0";
+    nativeBuildInputs = [
+      nativeTool
+      pkgs.copyDesktopItems
+    ];
+    env.RDT_EXPECT_NEXTEST = "1";
+    cargoPackages = [ "rdt-workspace-app" ];
+    checkPackages = [ "rdt-shape-support" ];
+    useNextest = true;
+    nativeCheckInputs = [ checkTool ];
+    desktopItems = [
+      (pkgs.makeDesktopItem {
+        name = "rdt-selected";
+        desktopName = "rdt selected";
+        exec = "rdt-workspace-app";
+      })
+    ];
+    postFixup = ''
+      echo fixed > "$out/share/fixup"
+    '';
+    doInstallCheck = true;
+    installCheckPhase = ''
+      test "$($out/bin/rdt-workspace-app)" = "app-before support-before generated-before macro-before"
+      touch "$out/share/install-checked"
+    '';
+  };
 in
 {
+  testPackageSelection = pkgs.runCommand "test-package-selection" { } ''
+    test "$(ls ${selected}/bin)" = rdt-workspace-app
+    test "$(cat ${selected}/share/fixup)" = fixed
+    test -f ${selected}/share/install-checked
+    test -f ${selected}/share/applications/rdt-selected.desktop
+    touch "$out"
+  '';
+
   testLibraryBinaryShape = checkPair {
     shape = "library";
     binary = "rdt-shape-library";

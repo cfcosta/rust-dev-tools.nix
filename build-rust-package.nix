@@ -18,8 +18,16 @@
   checkType ? buildType,
   checkFeatures ? buildFeatures,
   checkNoDefaultFeatures ? buildNoDefaultFeatures,
+  cargoPackages ? [ ],
+  checkPackages ? cargoPackages,
   doCheck ? true,
+  useNextest ? false,
+  nativeCheckInputs ? [ ],
   postInstall ? "",
+  postFixup ? "",
+  desktopItems ? [ ],
+  doInstallCheck ? false,
+  installCheckPhase ? null,
   meta ? { },
   passthru ? { },
 }:
@@ -95,6 +103,11 @@ let
     ]
   );
   cargoArgs = "--locked --offline --target ${lib.escapeShellArg target} --profile ${lib.escapeShellArg profile} ${featureArgs}";
+  packageArgs = packages: lib.escapeShellArgs (lib.concatMap (p: [ "--package" p ]) packages);
+  buildArgs = "${cargoArgs} ${packageArgs cargoPackages}";
+  checkArgs = "${cargoArgs} ${packageArgs checkPackages}";
+  # nextest names Cargo's profile --cargo-profile; --profile is its own.
+  nextestArgs = "--locked --offline --target ${lib.escapeShellArg target} --cargo-profile ${lib.escapeShellArg profile} ${featureArgs} ${packageArgs checkPackages}";
   cargo = command: "${rust}/bin/cargo ${command}";
   rustEnv = pkgs.rust.envVars;
   # Nixpkgs links Rust through each platform's C compiler.
@@ -156,8 +169,8 @@ let
       name = "${packageName}-dependencies-${packageVersion}";
       src = dummySource;
       buildPhase = ''
-        ${cargo "build"} ${cargoArgs}
-        ${lib.optionalString doCheck "${cargo "test"} ${cargoArgs} --no-run"}
+        ${cargo "build"} ${buildArgs}
+        ${lib.optionalString doCheck "${cargo "test"} ${checkArgs} --no-run"}
       '';
       installPhase = ''
         mkdir -p "$out"
@@ -186,6 +199,9 @@ assert lib.assertMsg (
 assert lib.assertMsg (
   !(passthru ? cargoArtifacts)
 ) "buildRustPackage: passthru.cargoArtifacts is reserved for generated dependency artifacts";
+assert lib.assertMsg (
+  builtins.all builtins.isString (cargoPackages ++ checkPackages)
+) "buildRustPackage: cargoPackages and checkPackages must be lists of Cargo package names";
 assert lib.assertMsg (builtins.isString packageName && builtins.isString packageVersion)
   "buildRustPackage: pname and version must be strings (supply overrides for inherited workspace identity)";
 pkgs.stdenv.mkDerivation (
@@ -196,6 +212,9 @@ pkgs.stdenv.mkDerivation (
       name
       doCheck
       postInstall
+      postFixup
+      desktopItems
+      doInstallCheck
       meta
       ;
     dontFixup = false;
@@ -209,13 +228,20 @@ pkgs.stdenv.mkDerivation (
       '';
     buildPhase = ''
       export cargoBuildLog="$NIX_BUILD_TOP/cargo-build.json"
-      ${cargo "build"} ${cargoArgs} --message-format json-render-diagnostics > "$cargoBuildLog"
+      ${cargo "build"} ${buildArgs} --message-format json-render-diagnostics > "$cargoBuildLog"
       ${pkgs.python3}/bin/python ${./rust-cache/install.py} \
         "$NIX_BUILD_TOP/workspace.json" "$cargoBuildLog" "$NIX_BUILD_TOP/install-artifacts"
     '';
-    checkPhase = ''
-      ${cargo "test"} ${cargoArgs}
-    '';
+    checkPhase =
+      if useNextest then
+        ''
+          ${cargo "nextest run"} ${nextestArgs}
+        ''
+      else
+        ''
+          ${cargo "test"} ${checkArgs}
+        '';
+    nativeCheckInputs = nativeCheckInputs ++ lib.optionals useNextest [ pkgs.cargo-nextest ];
     installPhase = ''
       mkdir -p "$out"
       cp -R "$NIX_BUILD_TOP/install-artifacts/." "$out/"
@@ -225,4 +251,5 @@ pkgs.stdenv.mkDerivation (
       inherit cargoArtifacts;
     };
   }
+  // lib.optionalAttrs (installCheckPhase != null) { inherit installCheckPhase; }
 )

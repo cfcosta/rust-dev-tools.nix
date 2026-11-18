@@ -81,6 +81,8 @@ The `rust` option takes one of these selections:
 
 Every toolchain has `rustc`, `cargo`, and the host's `rust-std`. Unless the profile is `minimal`, it also has `clippy`, `rustfmt`, `rust-analyzer`, and `rust-src` when the release ships them. Add components or targets with `rust = version.fromToolchain "stable" "1.85.0" // { components = [ "llvm-tools" ]; targets = [ "wasm32-unknown-unknown" ]; };`. A requested component the release lacks fails during evaluation.
 
+To build with stable but format with a nightly's unstable rustfmt options, give `rustfmt` a second selection: `rust = version.fromToolchainFile ./rust-toolchain.toml // { rustfmt = version.fromToolchain "nightly" "2026-11-18"; };`. The toolchain then has that nightly's `rustfmt` and `cargo-fmt`, and the rest is the stable release.
+
 The index in `rust-toolchain/manifests.json` holds one sha256 per dated release manifest: every stable release from 1.8.0 except 1.14.0, whose manifest has no date, and each beta and nightly from 2025-01-01. Evaluation fetches the selected manifest, and the components are fixed-output fetches of the URLs and hashes it lists. A daily workflow (`.github/workflows/flake.yml`) runs `scripts/update-rust-manifests.sh` and commits new releases. Run it yourself to add releases sooner, or `scripts/update-rust-manifests.sh --since YYYY-MM-DD` to also index older betas and nightlies. See [the toolchain decision](docs/decisions/own-toolchain.md).
 
 Configure features, profile, native tools, and final installation through the package call:
@@ -116,15 +118,22 @@ This is a supported subset of the Nixpkgs builder interface, not a drop-in repla
 | `buildType` | Cargo profile, default `"release"`. `"debug"` maps to Cargo's `"dev"` profile. |
 | `buildFeatures`, `buildNoDefaultFeatures` | Feature list and default-feature toggle; defaults are `[ ]` and `false`. |
 | `checkType`, `checkFeatures`, `checkNoDefaultFeatures` | Optional check settings. Each must equal its corresponding build setting. |
+| `cargoPackages` | Workspace packages to build and install, as `--package` arguments to both stages; defaults to `[ ]`, Cargo's default selection. |
+| `checkPackages` | Packages whose tests run; defaults to `cargoPackages`. |
 | `doCheck` | Run package tests and prepare dev-dependencies; defaults to `true`. |
+| `useNextest` | Run the tests with cargo-nextest instead of `cargo test`; defaults to `false`. |
+| `nativeCheckInputs` | Tools the tests need, in the final stage only. |
 | `postInstall` | Additional final-package installation commands. |
+| `postFixup` | Final-package commands after fixup, such as `wrapProgram`. |
+| `desktopItems` | Desktop entries for `copyDesktopItems`, which must be in `nativeBuildInputs`. |
+| `doInstallCheck`, `installCheckPhase` | Checks against the installed package. |
 | `meta`, `passthru` | Final-package metadata and caller passthru attributes. `passthru.cargoArtifacts` is reserved. |
 
 For Git dependencies, place source hashes in `cargoLock.outputHashes`, keyed by `"crate-name-version"`. A supplied lockfile replaces `src/Cargo.lock` in both compilation stages. The builder reads its contents before removing source-path context, so `cargoLock.lockFile = "${src}/Cargo.lock"` does not make unrelated source edits invalidate dependencies. Changed lockfile contents still invalidate the dependency artifacts.
 
 Environment precedence is generated defaults, then `setup`'s `env`, then the package `env`. Later values replace earlier ones, including compiler and target-linker overrides. An explicit `RUSTFLAGS` replaces the generated linker flags in both compilation stages. `CARGO_PROFILE` is reserved in user environment sets; select the profile with `buildType`. `CARGO_HOME` and `CARGO_TARGET_DIR` receive build-local defaults unless supplied in the shared environment.
 
-The builder rejects hash-based vendoring options such as `cargoHash` and `cargoSha256`, vendor-directory overrides, raw Cargo flags, custom phases, source hooks, patches, Nextest selection, auditing options, and sysroot controls. Preprocess source outside this builder if needed. There is no public `cargoArtifacts` input or separate dependency-stage options object.
+The builder rejects hash-based vendoring options such as `cargoHash` and `cargoSha256`, vendor-directory overrides, raw Cargo flags, custom build and check phases, source hooks, patches, Nextest filters, auditing options, and sysroot controls. Preprocess source outside this builder if needed. There is no public `cargoArtifacts` input or separate dependency-stage options object.
 
 `createRustPlatform` remains available as the existing lower-level toolchain platform export. It is not the cached package workflow described here.
 
