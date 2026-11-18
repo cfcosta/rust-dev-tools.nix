@@ -1,6 +1,6 @@
 # rust-dev-tools.nix
 
-Rust toolchains, development commands, and Nix package builds for Rust projects. The package builder compiles dependencies in a separate derivation and reuses them after application-only edits. The Cargo build stages live in this repository; there is no Crane dependency.
+Rust toolchains, development commands, and Nix package builds for Rust projects. The package builder compiles dependencies in a separate derivation and reuses them after application-only edits. Nixpkgs is the only input: the toolchains come from Rust's official release manifests and the Cargo build stages live in this repository.
 
 ## Build a project
 
@@ -16,10 +16,7 @@ For a Cargo project with a checked-in `Cargo.lock`, add this `flake.nix`:
   outputs = { nixpkgs, rust-dev-tools, ... }:
     let
       system = "x86_64-linux";
-      pkgs = import nixpkgs {
-        inherit system;
-        overlays = [ rust-dev-tools.overlays.default ];
-      };
+      pkgs = import nixpkgs { inherit system; };
       rdt = rust-dev-tools.setup pkgs {
         name = "my-app";
         dependencies = [ pkgs.openssl ];
@@ -37,7 +34,7 @@ For a Cargo project with a checked-in `Cargo.lock`, add this `flake.nix`:
 }
 ```
 
-Set `system` to your build platform. Remove OpenSSL if your project does not need it. The Rust overlay is required because `setup` selects its toolchain from `pkgs.rust-bin`.
+Set `system` to your build platform. Remove OpenSSL if your project does not need it. No overlay is needed.
 
 Run the package build:
 
@@ -61,7 +58,7 @@ my-app test
 
 ## Configure the toolchain and build
 
-`setup` defaults to the latest stable toolchain available in the locked Rust overlay. To select another channel or release, set its `rust` option:
+`setup` defaults to the newest stable release in this repository's manifest index. To select another channel or release, set its `rust` option:
 
 ```nix
 rdt = rust-dev-tools.setup pkgs {
@@ -71,6 +68,20 @@ rdt = rust-dev-tools.setup pkgs {
   env.OPENSSL_NO_VENDOR = "1";
 };
 ```
+
+The `rust` option takes one of these selections:
+
+| Selection | Toolchain |
+|---|---|
+| `version.stable`, `version.nightly` | The newest indexed stable release or nightly. |
+| `version.fromToolchain "stable" "1.85.0"` | That release. `"1.85"` takes the newest 1.85 patch, `"latest"` the newest release. |
+| `version.fromToolchain "nightly" "2025-06-01"` | The nightly or beta of that date, or `"latest"`. |
+| `version.fromToolchainFile ./rust-toolchain.toml` | The file's `channel`, `components`, `targets`, and `profile`. A legacy `rust-toolchain` file holding only a channel also works. |
+| `version.fromCargoToml ./Cargo.toml` | The newest patch of the package or workspace `rust-version`. |
+
+Every toolchain has `rustc`, `cargo`, and the host's `rust-std`. Unless the profile is `minimal`, it also has `clippy`, `rustfmt`, `rust-analyzer`, and `rust-src` when the release ships them. Add components or targets with `rust = version.fromToolchain "stable" "1.85.0" // { components = [ "llvm-tools" ]; targets = [ "wasm32-unknown-unknown" ]; };`. A requested component the release lacks fails during evaluation.
+
+The index in `rust-toolchain/manifests.json` holds one sha256 per dated release manifest: every stable release from 1.8.0 except 1.14.0, whose manifest has no date, and each beta and nightly from 2025-01-01. Evaluation fetches the selected manifest, and the components are fixed-output fetches of the URLs and hashes it lists. Run `scripts/update-rust-manifests.sh` to add newer releases, or `scripts/update-rust-manifests.sh --since YYYY-MM-DD` to also index older betas and nightlies. See [the toolchain decision](docs/decisions/own-toolchain.md).
 
 Configure features, profile, native tools, and final installation through the package call:
 

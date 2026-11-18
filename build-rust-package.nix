@@ -97,14 +97,15 @@ let
   cargoArgs = "--locked --offline --target ${lib.escapeShellArg target} --profile ${lib.escapeShellArg profile} ${featureArgs}";
   cargo = command: "${rust}/bin/cargo ${command}";
   rustEnv = pkgs.rust.envVars;
-  compilerEnv = platform: cc: cxx: linker: {
+  # Nixpkgs links Rust through each platform's C compiler.
+  compilerEnv = platform: cc: cxx: {
     "CC_${platform.rust.cargoEnvVarTarget}" = cc;
     "CXX_${platform.rust.cargoEnvVarTarget}" = cxx;
-    "CARGO_TARGET_${platform.rust.cargoEnvVarTarget}_LINKER" = linker;
+    "CARGO_TARGET_${platform.rust.cargoEnvVarTarget}_LINKER" = cc;
   };
   generatedEnv =
-    compilerEnv pkgs.stdenv.buildPlatform rustEnv.ccForBuild rustEnv.cxxForBuild rustEnv.linkerForBuild
-    // compilerEnv pkgs.stdenv.hostPlatform rustEnv.ccForHost rustEnv.cxxForHost rustEnv.linkerForHost
+    compilerEnv pkgs.stdenv.buildPlatform rustEnv.ccForBuild rustEnv.cxxForBuild
+    // compilerEnv pkgs.stdenv.hostPlatform rustEnv.ccForHost rustEnv.cxxForHost
     // {
       RUSTC = "${rust}/bin/rustc";
       RUSTDOC = "${rust}/bin/rustdoc";
@@ -145,7 +146,7 @@ let
       # Source overrides are copied into both stages before Cargo sees them.
       cp ${lockFile} Cargo.lock
       sed 's#directory = "cargo-vendor-dir"#directory = "${vendor}"#' \
-        ${vendor}/.cargo/config > "$CARGO_HOME/config.toml"
+        ${vendor}/.cargo/config.toml > "$CARGO_HOME/config.toml"
     '';
     dontFixup = true;
   };

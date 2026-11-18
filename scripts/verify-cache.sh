@@ -16,10 +16,7 @@ nix_args=("$@")
 common='let
   root = builtins.getEnv "RDT_ROOT";
   self = builtins.getFlake root;
-  pkgs = import self.inputs.nixpkgs {
-    system = builtins.currentSystem;
-    overlays = [ self.overlays.default ];
-  };
+  pkgs = import self.inputs.nixpkgs { system = builtins.currentSystem; };
 in '
 
 nix build --impure --no-link --print-out-paths "${nix_args[@]}" --expr "$common

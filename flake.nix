@@ -3,17 +3,12 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
     {
       self,
       nixpkgs,
-      rust-overlay,
       ...
     }:
     let
@@ -84,10 +79,7 @@
       developmentEnv =
         system:
         let
-          pkgs = import nixpkgs {
-            inherit system;
-            overlays = [ rust-overlay.overlays.default ];
-          };
+          pkgs = import nixpkgs { inherit system; };
         in
         {
           devShells.default = pkgs.mkShell { packages = with pkgs; [ nixfmt-rfc-style ]; };
@@ -126,11 +118,10 @@
             {
               testBuildRustPackage = runCase { };
               testExplicitLockfileContext = import ./checks/lockfile-context { inherit pkgs self; };
-              testStable = runCase { version = self.version.stable; };
-              testNightly = runCase { version = self.version.nightly; };
-              testFromToolchain = runCase { version = self.version.fromToolchain "nightly" "latest"; };
+              testStable = runCase { rust = self.version.stable; };
+              testNightly = runCase { rust = self.version.nightly; };
               testFromToolchainFile = runCase {
-                version = self.version.fromToolchainFile ./example/rust-toolchain.toml;
+                rust = self.version.fromToolchainFile ./example/rust-toolchain.toml;
               };
               testRustPackage =
                 let
@@ -175,7 +166,8 @@
                   '';
             }
             // import ./tests { inherit pkgs self; }
-            // import ./checks/build-shapes { inherit pkgs self; };
+            // import ./checks/build-shapes { inherit pkgs self; }
+            // import ./checks/toolchains { inherit pkgs self; };
         };
 
       perSystem = nixpkgs.lib.genAttrs [
@@ -188,7 +180,6 @@
     {
       inherit (lib) version setup;
 
-      overlays.default = rust-overlay.overlays.default;
       checks = builtins.mapAttrs (_: env: env.checks) perSystem;
       devShells = builtins.mapAttrs (_: env: env.devShells) perSystem;
     };

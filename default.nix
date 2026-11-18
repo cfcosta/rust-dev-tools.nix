@@ -18,7 +18,7 @@ let
   inherit (pkgs.stdenv) mkDerivation;
 
   # Rust setup
-  rust = pkgs.rust-bin.${options.rust.channel}.${options.rust.version}.complete;
+  rust = import ./rust-toolchain { inherit pkgs; } options.rust;
 
   createRustPlatform = pkgs.makeRustPlatform {
     cargo = rust;
@@ -44,7 +44,7 @@ let
   };
 
   env = {
-    RUSTFLAGS = concatStringsSep " " ((systemFlags.${pkgs.system}) ++ flagsFromCargoConfig);
+    RUSTFLAGS = concatStringsSep " " ((systemFlags.${pkgs.stdenv.hostPlatform.system}) ++ flagsFromCargoConfig);
     LD_LIBRARY_PATH = makeLibraryPath (
       (filter utils.containsLibraries options.dependencies) ++ [ pkgs.stdenv.cc.cc.lib ]
     );
@@ -72,7 +72,7 @@ let
       name = options.name;
       env = env // options.env;
       buildInputs = options.dependencies;
-      nativeBuildInputs = [ pkgs.pkg-config ] ++ systemSpecificDependencies.${pkgs.system};
+      nativeBuildInputs = [ pkgs.pkg-config ] ++ systemSpecificDependencies.${pkgs.stdenv.hostPlatform.system};
     };
   };
 
@@ -146,7 +146,7 @@ let
       ]
       ++ (attrValues (createPackages cargoCommands))
       ++ (attrValues (createPackages cargoExtensions))
-      ++ systemSpecificDependencies.${pkgs.system};
+      ++ systemSpecificDependencies.${pkgs.stdenv.hostPlatform.system};
   };
 
   # Shell completion
