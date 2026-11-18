@@ -31,6 +31,7 @@
   doInstallCheck ? false,
   installCheckPhase ? null,
   disallowedReferences ? [ ],
+  dependencyLayers ? [ ],
   meta ? { },
   passthru ? { },
 }:
@@ -112,6 +113,13 @@ let
   # nextest names Cargo's profile --cargo-profile; --profile is its own.
   nextestArgs = "--locked --offline --target ${lib.escapeShellArg target} --cargo-profile ${lib.escapeShellArg profile} ${featureArgs} ${packageArgs checkPackages}";
   cargo = command: "${rust}/bin/cargo ${command}";
+  # Compiled dependencies from other builds, each layer's own layers first.
+  # Cargo keys a unit by its inputs and not by workspace, so a unit another
+  # build left behind is fresh here when this build needs the same one.
+  layers = lib.unique (lib.concatMap (layer: layer.passthru.layers ++ [ layer ]) dependencyLayers);
+  unpack = artifacts: ''
+    zstd -dc ${artifacts}/target.tar.zst | tar -xf - -C "$CARGO_TARGET_DIR"
+  '';
   rustEnv = pkgs.rust.envVars;
   # Nixpkgs links Rust through each platform's C compiler.
   compilerEnv = platform: cc: cxx: {
@@ -158,13 +166,24 @@ let
       export CARGO_BUILD_JOBS="''${CARGO_BUILD_JOBS:-$NIX_BUILD_CORES}"
       export CARGO_INCREMENTAL="''${CARGO_INCREMENTAL:-0}"
       export RUST_TEST_THREADS="''${RUST_TEST_THREADS:-$NIX_BUILD_CORES}"
+      # Cargo's unit keys include RUSTFLAGS and its freshness checks the
+      # source path, so the vendored crates sit at one path in every build:
+      # a unit compiled for another package is then the same unit here. The
+      # Linux sandbox always builds in /build; elsewhere the build directory
+      # varies, and the store path at least stays the same in both stages.
+      if [ "$NIX_BUILD_TOP" = /build ]; then
+        vendorDir=/build/cargo-vendor-dir
+        ln -sfn ${vendor} "$vendorDir"
+      else
+        vendorDir=${vendor}
+      fi
       # Panic locations name source files. Remapping the vendored crates and
       # the toolchain's rust-src keeps both out of the package's closure.
-      export RUSTFLAGS="''${RUSTFLAGS:-} --remap-path-prefix=${vendor}=/cargo-vendor-dir --remap-path-prefix=$(${rust}/bin/rustc --print sysroot)=/rust-toolchain"
+      export RUSTFLAGS="''${RUSTFLAGS:-} --remap-path-prefix=$vendorDir=/cargo-vendor-dir --remap-path-prefix=$(${rust}/bin/rustc --print sysroot)=/rust-toolchain"
       mkdir -p "$CARGO_HOME"
       # Source overrides are copied into both stages before Cargo sees them.
       cp ${lockFile} Cargo.lock
-      sed 's#directory = "cargo-vendor-dir"#directory = "${vendor}"#' \
+      sed "s#directory = \"cargo-vendor-dir\"#directory = \"$vendorDir\"#" \
         ${vendor}/.cargo/config.toml > "$CARGO_HOME/config.toml"
     '';
     dontFixup = true;
@@ -175,6 +194,15 @@ let
       name = "${packageName}-dependencies-${packageVersion}";
       src = dummySource;
       preBuild = preBuildDependencies;
+      configurePhase =
+        shared.configurePhase
+        + ''
+          mkdir -p "$CARGO_TARGET_DIR"
+          ${lib.concatMapStrings unpack layers}
+          chmod -R u+w "$CARGO_TARGET_DIR"
+          # Unpacked files carry mtime 1; whatever this build writes is newer.
+          touch "$NIX_BUILD_TOP/layers-unpacked"
+        '';
       buildPhase = ''
         runHook preBuild
         ${cargo "build"} ${buildArgs}
@@ -182,9 +210,13 @@ let
       '';
       installPhase = ''
         mkdir -p "$out"
-        tar --sort=name --mtime=@1 --owner=0 --group=0 --numeric-owner \
-          -C "$CARGO_TARGET_DIR" -cf - . | zstd -T"$NIX_BUILD_CORES" -o "$out/target.tar.zst"
+        # Only what the layers lack: the final stage unpacks them first.
+        (cd "$CARGO_TARGET_DIR" && find . ! -type d -newer "$NIX_BUILD_TOP/layers-unpacked" -print0) |
+          LC_ALL=C sort -z |
+          tar --mtime=@1 --owner=0 --group=0 --numeric-owner \
+            -C "$CARGO_TARGET_DIR" --null -T - -cf - | zstd -T"$NIX_BUILD_CORES" -o "$out/target.tar.zst"
       '';
+      passthru = { inherit layers; };
     }
   );
 in
@@ -232,7 +264,7 @@ pkgs.stdenv.mkDerivation (
       shared.configurePhase
       + ''
         mkdir -p "$CARGO_TARGET_DIR"
-        zstd -dc ${cargoArtifacts}/target.tar.zst | tar -xf - -C "$CARGO_TARGET_DIR"
+        ${lib.concatMapStrings unpack (layers ++ [ cargoArtifacts ])}
         chmod -R u+w "$CARGO_TARGET_DIR"
         ${cargo "metadata"} --locked --offline --no-deps --format-version 1 ${featureArgs} > "$NIX_BUILD_TOP/workspace.json"
       '';
