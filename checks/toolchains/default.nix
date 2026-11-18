@@ -103,6 +103,28 @@ assert lib.assertMsg (rejects (
       touch "$out"
     '';
 
+  # The bundled LLD still links, through Nix's wrapper: a binary that needs
+  # libstdc++ finds it at run time.
+  testToolchainLinksThroughWrapper =
+    let
+      selected = toolchain self.version.stable;
+    in
+    runCommandCC "test-toolchain-links-through-wrapper"
+      {
+        nativeBuildInputs = [
+          selected
+          pkgs.binutils
+        ];
+      }
+      ''
+        echo 'fn main() { println!("ok"); }' > main.rs
+        rustc main.rs -o main -C link-arg=-Wl,--no-as-needed -C link-arg=-lstdc++
+        readelf -d main | grep -q 'libstdc++'
+        ${lib.optionalString pkgs.stdenv.hostPlatform.isx86_64 "readelf -p .comment main | grep -q 'Linker: LLD'"}
+        test "$(./main)" = ok
+        touch "$out"
+      '';
+
   # A stable compiler formatting with a nightly's unstable rustfmt options.
   testToolchainNightlyRustfmt =
     let

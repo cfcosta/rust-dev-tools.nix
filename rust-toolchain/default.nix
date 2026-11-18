@@ -289,6 +289,19 @@ let
           rm -f "$out/manifest.in"
           rm -rf "$dir"
         done
+      ''
+      # rustc links through the bundled LLD by default on some Linux targets,
+      # calling gcc-ld/ld.lld past Nix's linker wrapper, so binaries lose the
+      # runpath to libraries such as libstdc++. Nixpkgs' wrapped ld.lld adds
+      # it back.
+      + lib.optionalString stdenv.hostPlatform.isLinux ''
+        for gccld in "$out"/lib/rustlib/*/bin/gcc-ld; do
+          if [ -e "$gccld/ld.lld" ]; then
+            ln -sf ${pkgs.llvmPackages.bintools}/bin/ld.lld "$gccld/ld.lld"
+          fi
+        done
+      ''
+      + ''
         runHook postInstall
       '';
 
